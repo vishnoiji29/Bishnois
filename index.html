@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>सब्दवाणी - श्री गुरु जंभेश्वर भक्ति ऐप</title>
+  <!-- PWA: installable + offline. manifest.json and sw.js must sit next to this
+       index.html in the repo root (provided alongside this file). -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#D88900">
+  <link rel="canonical" href="https://bishnois.vercel.app/">
 
   <!-- TAILWIND CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -14,7 +19,12 @@
   <!-- 20 curated premium Hindi/Devanagari fonts — selectable live from the admin panel.
        (Kohinoor Devanagari is a licensed Apple/ITF font, not on Google Fonts — it is kept
        in the CSS font-stack below as a named fallback for devices that already have it installed.) -->
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700;800;900&family=Noto+Serif+Devanagari:wght@400;500;600;700;800;900&family=Tiro+Devanagari+Hindi:ital@0;1&family=Tiro+Devanagari+Sanskrit:ital@0;1&family=Hind:wght@400;500;600;700&family=Baloo+2:wght@400;500;600;700;800&family=Mukta:wght@400;500;600;700;800&family=Mukta+Vaani:wght@400;500;600;700;800&family=Khand:wght@400;500;600;700&family=Teko:wght@400;500;600;700&family=Laila:wght@400;500;600;700&family=Eczar:wght@400;500;600;700;800&family=Martel:wght@400;600;700;800;900&family=Palanquin:wght@400;500;600;700&family=Palanquin+Dark:wght@400;500;600;700&family=Sarala:wght@400;700&family=Karma:wght@400;500;600;700&family=Kadwa:wght@400;700&family=Rozha+One&family=Yatra+One&display=swap" rel="stylesheet">
+  <!-- BUG FIX (speed): the old version loaded ALL 20 curated font families here
+       (huge render-blocking CSS) AND loaded the 3 actually-selected fonts again
+       via #dynamicFontLink at mount. That was double work. Now we only preload the
+       3 default families immediately (fast) — dynamicFontLink still swaps in
+       whatever the admin panel selects, on demand. -->
+  <link id="defaultFontLink" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700;800&family=Noto+Serif+Devanagari:wght@400;500;600;700;800&family=Tiro+Devanagari+Hindi:ital@0;1&display=swap">
   <link id="dynamicFontLink" rel="stylesheet" href="">
 
   <!-- REACT & REACT-DOM CDN -->
@@ -158,6 +168,15 @@
 </head>
 <body class="bg-[#FCFAF5] text-[#4A3424] antialiased selection:bg-amber-200 font-noto-sans">
 
+  <!-- INSTANT SPLASH (pure HTML/CSS, shows before React/Babel even parse — fixes the
+       "site load bohot slow lagta hai" complaint by giving instant first paint).
+       Hidden automatically once the app has data (cache or network) and mounts. -->
+  <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#FCFAF5;transition:opacity .35s ease;">
+    <div style="width:56px;height:56px;border-radius:50%;border:3px solid #E8DCC4;border-top-color:#D88900;animation:bootspin 0.9s linear infinite;"></div>
+    <div style="margin-top:14px;font-family:'Noto Sans Devanagari',sans-serif;color:#8a6a3a;font-size:14px;">सब्दवाणी लोड हो रहा है…</div>
+  </div>
+  <style>@keyframes bootspin{to{transform:rotate(360deg)}}</style>
+
   <div id="root"></div>
 
   <!-- REACT APPLICATION JSX SCRIPT -->
@@ -169,6 +188,27 @@
     const DEFAULT_GITHUB_REPO = "Bishnois";
     const DEFAULT_GITHUB_BRANCH = "main";
     const GITHUB_DATA_PATH = "sabadwani-data.json";
+    const LIVE_SITE_URL = "https://bishnois.vercel.app/";
+    const DATA_CACHE_KEY = "sabad_data_cache_v1";      // localStorage: last-known-good data (instant paint + offline)
+    const DATA_CACHE_META_KEY = "sabad_data_cache_meta_v1"; // { savedAt, sourceSha }
+
+    // jsDelivr mirrors the GitHub repo on a real global CDN (raw.githubusercontent.com has
+    // no CDN caching and is often slow/rate-limited from India). We fetch from jsDelivr first
+    // for speed; if that fails (very fresh publish before jsDelivr's first pull, or jsDelivr
+    // down) we fall back to the raw GitHub URL. The admin panel purges the jsDelivr cache on
+    // every publish, so updates still show up within seconds instead of jsDelivr's normal ~7 day TTL.
+    const jsdelivrUrl = (user, repo, branch, path) =>
+      `https://cdn.jsdelivr.net/gh/${user}/${repo}@${branch}/${path}`;
+    const rawGithubUrl = (user, repo, branch, path) =>
+      `https://raw.githubusercontent.com/${user}/${repo}/${branch}/${path}`;
+    // Audio/image fields saved by the admin panel are stored as repo-relative paths
+    // (e.g. "audio/sabads/12.mp3") so they resolve for whichever owner/repo/branch is
+    // configured. Already-absolute URLs (http/https/data:) pass through unchanged.
+    const resolveAssetUrl = (path, user, repo, branch) => {
+      if (!path) return '';
+      if (/^(https?:)?\/\//.test(path) || path.startsWith('data:')) return path;
+      return jsdelivrUrl(user, repo, branch, path.replace(/^\/+/, ''));
+    };
 
     // High resolution portrait
     const DEFAULT_GURU_JAMBHESHWAR_IMAGE = "https://lh3.googleusercontent.com/d/1e423140-980c-11f1-8820-7b034c035b4a";
@@ -426,6 +466,7 @@
       const [todayQuote, setTodayQuote] = useState({ text: "विष्णु विष्णु तू भण रे प्राणी", author: "श्री जंभेश्वर भगवान" });
       const [guruAvatarUrl, setGuruAvatarUrl] = useState(DEFAULT_GURU_JAMBHESHWAR_IMAGE);
       const [appLogoUrl, setAppLogoUrl] = useState('');
+      const [adminPanelUrl, setAdminPanelUrl] = useState('');
       // PREMIUM FONT SYSTEM — set from the admin panel's "फ़ॉन्ट" tab
       const [fonts, setFonts] = useState({
         heading: 'Tiro Devanagari Hindi',
@@ -474,19 +515,10 @@
       const [searchQuery, setSearchQuery] = useState('');
       const [showNotifications, setShowNotifications] = useState(false);
 
-      // DYNAMIC GITHUB DATA FETCHING FUNCTION (SAME LOGIC AS MONK TEST REFERENCE)
-      const fetchGithubData = async () => {
-        if (!githubUser || !githubRepo) {
-          setSyncError('GitHub Owner/Repo सेट नहीं है — नीचे ⚙️ सेटिंग्स से भरें।');
-          return;
-        }
-        setIsSyncing(true);
-        setSyncError('');
-        try {
-          const rawUrl = `https://raw.githubusercontent.com/${githubUser}/${githubRepo}/${githubBranch}/${GITHUB_DATA_PATH}?_cb=${Date.now()}`;
-          const res = await fetch(rawUrl, { cache: 'no-store' });
-          if (res.ok) {
-            const data = await res.json();
+      // Applies a fetched/cached data object onto all the React state slices.
+      // Pulled out of fetchGithubData so both the instant cache-load and the
+      // background network refresh can share the exact same logic.
+      const applyGithubData = (data) => {
             if (data.homeFolders) setHomeFolders(data.homeFolders);
             if (data.sabads) setSabads(data.sabads);
             if (data.amavasyaList) setAmavasyaList(data.amavasyaList);
@@ -499,6 +531,7 @@
             if (data.todayQuote) setTodayQuote(data.todayQuote);
             if (data.guruAvatarUrl) setGuruAvatarUrl(data.guruAvatarUrl);
             if (data.appLogoUrl !== undefined) setAppLogoUrl(data.appLogoUrl);
+            if (data.adminPanelUrl !== undefined) setAdminPanelUrl(data.adminPanelUrl);
             if (data.appTitle) setAppTitle(data.appTitle);
             if (data.appBadge !== undefined) setAppBadge(data.appBadge);
             if (data.appTagline) setAppTagline(data.appTagline);
@@ -515,18 +548,72 @@
             setGithubSynced(true);
             setLastSyncedAt(new Date());
             setSyncError('');
-            // Data refreshes silently in the background — no popup, as requested.
+      };
+
+      // Hides the instant boot splash the first time we have *any* data on screen
+      // (cached or fresh) — never leaves the user staring at a blank/frozen page.
+      const hideBootSplash = () => {
+        const el = document.getElementById('bootSplash');
+        if (el) { el.style.opacity = '0'; setTimeout(() => el.remove(), 400); }
+      };
+
+      // BUG FIX + SPEED FIX (rewritten): the old version fetched raw.githubusercontent.com
+      // fresh on every single load with cache:'no-store' + a Date.now() cache-buster — this
+      // guaranteed a slow, always-uncached network round trip before ANYTHING could render,
+      // and gave zero offline support. New strategy ("stale-while-revalidate"):
+      //   1) Paint instantly from the last-known-good copy saved in localStorage (if any).
+      //   2) In the background, fetch the latest JSON from jsDelivr's CDN (fast, cached
+      //      globally, purged instantly by the admin panel on publish). Falls back to the
+      //      raw GitHub URL if jsDelivr hasn't picked up a brand-new publish yet.
+      //   3) Save the fresh copy to localStorage so next launch (and offline launches) are instant too.
+      const fetchGithubData = async (isBackgroundRefresh) => {
+        if (!githubUser || !githubRepo) {
+          setSyncError('GitHub Owner/Repo सेट नहीं है — नीचे ⚙️ सेटिंग्स से भरें।');
+          hideBootSplash();
+          return;
+        }
+        // Step 1: instant paint from cache (only on first load, not on background refresh)
+        if (!isBackgroundRefresh) {
+          try {
+            const cachedRaw = localStorage.getItem(DATA_CACHE_KEY);
+            if (cachedRaw) {
+              applyGithubData(JSON.parse(cachedRaw));
+              setGithubSynced(true);
+              hideBootSplash();
+            }
+          } catch (_) { /* corrupt cache, ignore and fall through to network */ }
+        }
+        setIsSyncing(true);
+        setSyncError('');
+        try {
+          let res;
+          try {
+            res = await fetch(jsdelivrUrl(githubUser, githubRepo, githubBranch, GITHUB_DATA_PATH), { cache: 'default' });
+            if (!res.ok) throw new Error('jsdelivr-miss');
+          } catch (_) {
+            // jsDelivr hasn't mirrored this yet (e.g. repo just made public, or brand-new
+            // file) — fall back straight to GitHub's raw file.
+            res = await fetch(rawGithubUrl(githubUser, githubRepo, githubBranch, GITHUB_DATA_PATH) + `?_cb=${Date.now()}`, { cache: 'no-store' });
+          }
+          if (res.ok) {
+            const freshData = await res.json();
+            applyGithubData(freshData);
+            try { localStorage.setItem(DATA_CACHE_KEY, JSON.stringify(freshData)); } catch (_) { /* storage full/blocked — non-fatal */ }
+            hideBootSplash();
           } else if (res.status === 404) {
             setGithubSynced(false);
             setSyncError(`फ़ाइल नहीं मिली (404) — ${githubUser}/${githubRepo} (branch: ${githubBranch}) में "${GITHUB_DATA_PATH}" मौजूद नहीं है, या repo अभी तक admin पैनल से Publish नहीं हुआ, या repo Private है (यह ऐप बिना लॉगिन के सिर्फ़ Public repo से डेटा पढ़ सकता है)।`);
+            hideBootSplash();
           } else {
             setGithubSynced(false);
             setSyncError(`GitHub से डेटा नहीं आया (HTTP ${res.status})। नीचे Owner/Repo/Branch जांचें कि वे बिल्कुल Admin पैनल जैसे ही हैं।`);
+            hideBootSplash();
           }
         } catch (e) {
-          console.log("GitHub sync fallback to default local dataset");
+          console.log("GitHub sync fallback to cached/default dataset");
           setGithubSynced(false);
-          setSyncError('नेटवर्क एरर — इंटरनेट कनेक्शन जांचें और दोबारा कोशिश करें।');
+          setSyncError('नेटवर्क एरर — ऑफ़लाइन दिख रहे हैं (पिछली बार सेव किया डेटा दिखाया जा रहा है)।');
+          hideBootSplash();
         } finally {
           setIsSyncing(false);
         }
@@ -545,10 +632,20 @@
         setShowGithubModal(false);
       };
 
-      // FETCH GITHUB DATA ON MOUNT
+      // FETCH GITHUB DATA ON MOUNT, then quietly re-check every 5 minutes so long
+      // sessions (app left open) still pick up new admin-panel publishes.
       useEffect(() => {
-        fetchGithubData();
+        fetchGithubData(false);
+        const iv = setInterval(() => fetchGithubData(true), 5 * 60 * 1000);
+        return () => clearInterval(iv);
       }, [githubUser, githubRepo, githubBranch]);
+
+      // Safety net: never leave the boot splash on screen for more than 6s even if
+      // something above silently failed (e.g. localStorage blocked in a private tab).
+      useEffect(() => {
+        const t = setTimeout(hideBootSplash, 6000);
+        return () => clearTimeout(t);
+      }, []);
 
       // APPLY ADMIN-SELECTED FONTS — pushes CSS variables + loads the exact
       // Google Font weights needed, so any of the 20 curated fonts works instantly.
@@ -817,10 +914,20 @@
                   </div>
                   <div className="flex gap-2 pt-1">
                     <button onClick={saveGithubSettings} className="flex-1 bg-amber-700 text-white font-bold text-sm py-2.5 rounded-xl active:scale-95 transition">सेव करें और सिंक करें</button>
-                    <button onClick={fetchGithubData} disabled={isSyncing} className="p-2.5 rounded-xl border border-amber-300 text-amber-800 active:scale-90 transition disabled:opacity-50" title="अभी दोबारा सिंक करें">
+                    <button onClick={() => fetchGithubData(true)} disabled={isSyncing} className="p-2.5 rounded-xl border border-amber-300 text-amber-800 active:scale-90 transition disabled:opacity-50" title="अभी दोबारा सिंक करें">
                       <Icons.RefreshCw />
                     </button>
                   </div>
+                  {adminPanelUrl && (
+                    <a
+                      href={adminPanelUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 w-full border border-amber-300 text-amber-800 font-bold text-sm py-2.5 rounded-xl active:scale-95 transition"
+                    >
+                      <Icons.Settings /> Admin Panel खोलें
+                    </a>
+                  )}
                 </div>
               </div>
             </div>
@@ -1112,6 +1219,18 @@
                     </button>
                   </div>
 
+                  {selectedItem.audioUrl && (
+                    <audio
+                      key={selectedItem.id}
+                      controls
+                      preload="none"
+                      className="w-full h-10 rounded-full"
+                      src={resolveAssetUrl(selectedItem.audioUrl, githubUser, githubRepo, githubBranch)}
+                    >
+                      आपका ब्राउज़र ऑडियो सपोर्ट नहीं करता।
+                    </audio>
+                  )}
+
                   {!showMeaning ? (
                     <div className="leading-relaxed font-noto-serif" style={{ fontSize: `${fontSize}px` }}>
                       {selectedItem.verses?.map((line, idx) => (
@@ -1374,6 +1493,18 @@
                   <Icons.Book />
                 </div>
 
+                {selectedItem.audioUrl && (
+                  <audio
+                    key={selectedItem.id}
+                    controls
+                    preload="none"
+                    className="w-full h-10 rounded-full"
+                    src={resolveAssetUrl(selectedItem.audioUrl, githubUser, githubRepo, githubBranch)}
+                  >
+                    आपका ब्राउज़र ऑडियो सपोर्ट नहीं करता।
+                  </audio>
+                )}
+
                 <div className="bg-white rounded-3xl p-5 border border-amber-200 shadow-md text-center leading-relaxed text-amber-950 font-noto-serif text-base">
                   {selectedItem.verses?.map((v, i) => <p key={i} className="py-1">{v}</p>)}
                 </div>
@@ -1485,71 +1616,4 @@
             {activeTab === 'about' && (
               <div className="space-y-3.5 animate-fadeIn">
                 <div className="bg-gradient-to-r from-amber-600 via-amber-700 to-yellow-700 text-white p-3.5 rounded-2xl shadow-md flex items-center justify-between">
-                  <button onClick={() => { setActiveTab('home'); setCurrentFolder('main'); }} className="p-1 rounded-full bg-white/20"><Icons.ChevronLeft /></button>
-                  <h2 className="font-black text-base font-tiro">॥ हमारे बारे में ॥</h2>
-                  <Icons.Info />
-                </div>
-
-                <div className="flex justify-center py-2">
-                  <GuruAvatar imgUrl={guruAvatarUrl} size="xl" showAura={true} />
-                </div>
-
-                <div className="bg-white rounded-3xl p-5 border border-amber-200 shadow-md space-y-4 text-xs leading-relaxed font-noto-sans">
-                  <p className="font-black text-sm text-amber-950 font-tiro text-center">
-                    {aboutText.heading}
-                  </p>
-                  <div>
-                    <p className="font-black text-amber-950 mb-1">{aboutText.disclaimerTitle}</p>
-                    <p className="text-amber-900/90 font-medium">
-                      {aboutText.disclaimerBody}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'privacy' && (
-              <div className="space-y-3.5 animate-fadeIn">
-                <div className="bg-gradient-to-r from-amber-600 via-amber-700 to-yellow-700 text-white p-3.5 rounded-2xl shadow-md flex items-center justify-between">
-                  <button onClick={() => { setActiveTab('home'); setCurrentFolder('main'); }} className="p-1 rounded-full bg-white/20"><Icons.ChevronLeft /></button>
-                  <h2 className="font-black text-base font-tiro">॥ गोपनीयता नीति ॥</h2>
-                  <Icons.Shield />
-                </div>
-
-                <div className="bg-white rounded-3xl p-5 border border-amber-200 shadow-md space-y-3 text-xs leading-relaxed font-noto-sans">
-                  <h3 className="font-bold text-sm text-amber-950 font-tiro">गोपनीयता और डेटा सुरक्षा</h3>
-                  <p>यह ऐप आपकी व्यक्तिगत जानकारी एकत्र नहीं करता है। जाप माला गिनती और आपकी पसंद का डेटा आपके फ़ोन में ही सुरक्षित रहता है।</p>
-                </div>
-              </div>
-            )}
-
-          </main>
-
-          {/* BOTTOM NAVIGATION */}
-          <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-[#FCFAF5]/95 backdrop-blur-md border-t border-amber-200/80 px-2 py-1 flex items-center justify-around z-40 font-tiro text-[10px]">
-            {[
-              { id: 'home', label: 'होम', icon: Icons.Home },
-              { id: 'support', label: 'सहयोग', icon: Icons.HandHeart },
-              { id: 'amavasya', label: 'अमावस्या', icon: Icons.Calendar },
-              { id: 'about', label: 'हमारे बारे में', icon: Icons.Info },
-              { id: 'privacy', label: 'गोपनीयता', icon: Icons.Shield },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => { setActiveTab(tab.id); setCurrentFolder('main'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                className={`flex flex-col items-center py-1 px-2 transition ${activeTab === tab.id && currentFolder === 'main' ? 'text-amber-700 font-extrabold scale-105' : 'text-amber-900/60'}`}
-              >
-                <tab.icon />
-                <span className="mt-0.5">{tab.label}</span>
-              </button>
-            ))}
-          </nav>
-
-        </div>
-      );
-    }
-
-    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-  </script>
-</body>
-</html>
+                  <button onClick={() => { setActiveTab('home'); setCurrentFolder
