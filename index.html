@@ -1,0 +1,1696 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>सब्दवाणी - श्री गुरु जंभेश्वर भक्ति ऐप</title>
+  <!-- PWA: installable + offline. manifest.json and sw.js must sit next to this
+       index.html in the repo root (provided alongside this file). -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#D88900">
+  <link rel="canonical" href="https://bishnois.vercel.app/">
+
+  <!-- TAILWIND CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- GOOGLE FONTS (TIRO DEVANAGARI, NOTO SERIF, NOTO SANS) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- 20 curated premium Hindi/Devanagari fonts — selectable live from the admin panel.
+       (Kohinoor Devanagari is a licensed Apple/ITF font, not on Google Fonts — it is kept
+       in the CSS font-stack below as a named fallback for devices that already have it installed.) -->
+  <!-- BUG FIX (speed): the old version loaded ALL 20 curated font families here
+       (huge render-blocking CSS) AND loaded the 3 actually-selected fonts again
+       via #dynamicFontLink at mount. That was double work. Now we only preload the
+       3 default families immediately (fast) — dynamicFontLink still swaps in
+       whatever the admin panel selects, on demand. -->
+  <link id="defaultFontLink" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700;800&family=Noto+Serif+Devanagari:wght@400;500;600;700;800&family=Tiro+Devanagari+Hindi:ital@0;1&display=swap">
+  <link id="dynamicFontLink" rel="stylesheet" href="">
+
+  <!-- REACT & REACT-DOM CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+
+  <!-- BABEL JS CDN FOR JSX COMPILATION -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    /* Admin-controlled premium font system — the admin panel writes these three
+       families into sabadwani-data.json ("fonts"), the app applies them here. */
+    :root {
+      --font-heading: 'Tiro Devanagari Hindi';
+      --font-body: 'Noto Serif Devanagari';
+      --font-ui: 'Noto Sans Devanagari';
+    }
+    .font-tiro {
+      font-family: var(--font-heading), 'Kohinoor Devanagari', 'Tiro Devanagari Hindi', 'Noto Serif Devanagari', serif;
+      letter-spacing: 0.015em;
+    }
+    .font-noto-serif {
+      font-family: var(--font-body), 'Kohinoor Devanagari', 'Noto Serif Devanagari', serif;
+      line-height: 1.9;
+    }
+    .font-noto-sans {
+      font-family: var(--font-ui), 'Kohinoor Devanagari', 'Noto Sans Devanagari', sans-serif;
+    }
+    /* Hide scrollbar for mobile web app look */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* Divine, slow-breathing glow behind Guru ji's photo — refined and premium, never a hard blink */
+    @keyframes glowSoft {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(216, 137, 0, 0.12), 0 0 0 0 rgba(255, 215, 130, 0); }
+      50% { box-shadow: 0 0 18px 5px rgba(216, 137, 0, 0.22), 0 0 34px 10px rgba(255, 215, 130, 0.12); }
+    }
+    .animate-glow-soft {
+      animation: glowSoft 5.5s infinite ease-in-out;
+    }
+
+    /* Gentle breathing ring for smaller accent icons (e.g. calendar badge) */
+    @keyframes glowSoftFaint {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(216, 137, 0, 0.10); }
+      50% { box-shadow: 0 0 10px 2px rgba(216, 137, 0, 0.20); }
+    }
+    .animate-glow-faint {
+      animation: glowSoftFaint 4.2s infinite ease-in-out;
+    }
+
+    @keyframes floatSmooth {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-4px); }
+    }
+    .animate-float {
+      animation: floatSmooth 4s ease-in-out infinite;
+    }
+
+    /* Entrance animation for home-page content: fades + rises in, staggered per element via --d */
+    @keyframes riseFadeIn {
+      0% { opacity: 0; transform: translateY(14px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    .animate-rise-in {
+      opacity: 0;
+      animation: riseFadeIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      animation-delay: var(--d, 0s);
+    }
+
+    /* Gentle press feedback for tappable cards — feels alive without being distracting */
+    .tap-card {
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .tap-card:active {
+      transform: scale(0.96);
+    }
+
+    /* Custom Glassmorphism Cards */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(229, 203, 150, 0.5);
+    }
+    .glass-card-dark {
+      background: rgba(31, 25, 19, 0.95);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(180, 120, 30, 0.4);
+      color: #F8F1E5;
+    }
+    .glass-card-sepia {
+      background: rgba(244, 234, 213, 0.95);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(210, 170, 110, 0.6);
+      color: #3D2817;
+    }
+
+    /* Active Pulse Dot */
+    .pulse-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: #10B981;
+      box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+      animation: pulseGreen 1.6s infinite;
+    }
+    @keyframes pulseGreen {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { transform: scale(1.1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+
+    /* Bell icon rings like a real bell every few seconds */
+    @keyframes bellRing {
+      0%, 6%, 100% { transform: rotate(0deg); }
+      1% { transform: rotate(14deg); }
+      2% { transform: rotate(-12deg); }
+      3% { transform: rotate(9deg); }
+      4% { transform: rotate(-7deg); }
+      5% { transform: rotate(3deg); }
+    }
+    .animate-bell-ring {
+      animation: bellRing 3.2s ease-in-out infinite;
+      transform-origin: top center;
+    }
+
+    /* Today's-thought banner: a soft light sweep so the card feels "alive" without changing its layout */
+    @keyframes bannerShine {
+      0% { transform: translateX(-120%) skewX(-15deg); }
+      100% { transform: translateX(220%) skewX(-15deg); }
+    }
+    .animate-banner-shine {
+      animation: bannerShine 4.5s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body class="bg-[#FCFAF5] text-[#4A3424] antialiased selection:bg-amber-200 font-noto-sans">
+
+  <!-- INSTANT SPLASH (pure HTML/CSS, shows before React/Babel even parse — fixes the
+       "site load bohot slow lagta hai" complaint by giving instant first paint).
+       Hidden automatically once the app has data (cache or network) and mounts. -->
+  <div id="bootSplash" style="position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#FCFAF5;transition:opacity .35s ease;">
+    <div style="width:56px;height:56px;border-radius:50%;border:3px solid #E8DCC4;border-top-color:#D88900;animation:bootspin 0.9s linear infinite;"></div>
+    <div style="margin-top:14px;font-family:'Noto Sans Devanagari',sans-serif;color:#8a6a3a;font-size:14px;">सब्दवाणी लोड हो रहा है…</div>
+  </div>
+  <style>@keyframes bootspin{to{transform:rotate(360deg)}}</style>
+
+  <div id="root"></div>
+
+  <!-- REACT APPLICATION JSX SCRIPT -->
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // --- DEFAULT GITHUB CONFIGURATION FOR LIVE AUTO-UPDATE ---
+    const DEFAULT_GITHUB_USER = "vishnoiji29";
+    const DEFAULT_GITHUB_REPO = "Bishnois";
+    const DEFAULT_GITHUB_BRANCH = "main";
+    const GITHUB_DATA_PATH = "sabadwani-data.json";
+    const LIVE_SITE_URL = "https://bishnois.vercel.app/";
+    const DATA_CACHE_KEY = "sabad_data_cache_v1";      // localStorage: last-known-good data (instant paint + offline)
+    const DATA_CACHE_META_KEY = "sabad_data_cache_meta_v1"; // { savedAt, sourceSha }
+
+    // jsDelivr mirrors the GitHub repo on a real global CDN (raw.githubusercontent.com has
+    // no CDN caching and is often slow/rate-limited from India). We fetch from jsDelivr first
+    // for speed; if that fails (very fresh publish before jsDelivr's first pull, or jsDelivr
+    // down) we fall back to the raw GitHub URL. The admin panel purges the jsDelivr cache on
+    // every publish, so updates still show up within seconds instead of jsDelivr's normal ~7 day TTL.
+    const jsdelivrUrl = (user, repo, branch, path) =>
+      `https://cdn.jsdelivr.net/gh/${user}/${repo}@${branch}/${path}`;
+    const rawGithubUrl = (user, repo, branch, path) =>
+      `https://raw.githubusercontent.com/${user}/${repo}/${branch}/${path}`;
+    // Audio/image fields saved by the admin panel are stored as repo-relative paths
+    // (e.g. "audio/sabads/12.mp3") so they resolve for whichever owner/repo/branch is
+    // configured. Already-absolute URLs (http/https/data:) pass through unchanged.
+    const resolveAssetUrl = (path, user, repo, branch) => {
+      if (!path) return '';
+      if (/^(https?:)?\/\//.test(path) || path.startsWith('data:')) return path;
+      return jsdelivrUrl(user, repo, branch, path.replace(/^\/+/, ''));
+    };
+
+    // High resolution portrait
+    const DEFAULT_GURU_JAMBHESHWAR_IMAGE = "https://lh3.googleusercontent.com/d/1e423140-980c-11f1-8820-7b034c035b4a";
+    
+    // Fallback SVG representation of Sri Guru Jambheshwar Bhagwan
+    const GuruJambheshwarSVG = () => (
+      <svg className="w-full h-full" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="100" cy="100" r="95" fill="url(#aura_grad)" stroke="#D88900" strokeWidth="3"/>
+        <defs>
+          <radialGradient id="aura_grad" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(100 100) scale(95)">
+            <stop stopColor="#FFF2D6"/>
+            <stop offset="0.7" stopColor="#FDE6B0"/>
+            <stop offset="1" stopColor="#E69500"/>
+          </radialGradient>
+        </defs>
+        <path d="M50 85 L100 15 L150 85 Z" fill="#DC2626" stroke="#B91C1C" strokeWidth="2"/>
+        <path d="M45 85 Q100 95 155 85 L150 100 Q100 108 50 100 Z" fill="#B91C1C"/>
+        <circle cx="100" cy="90" r="60" stroke="#F59E0B" strokeWidth="2" strokeDasharray="4 4"/>
+        <ellipse cx="100" cy="105" rx="32" ry="38" fill="#FDE6D2"/>
+        <path d="M68 110 Q100 185 132 110 Q145 150 100 180 Q55 150 68 110 Z" fill="#FFFFFF" stroke="#E5E7EB"/>
+        <path d="M88 98 Q93 94 98 98" stroke="#451A03" strokeWidth="2" fill="none"/>
+        <path d="M102 98 Q107 94 112 98" stroke="#451A03" strokeWidth="2" fill="none"/>
+        <circle cx="100" cy="91" r="3" fill="#DC2626"/>
+        <path d="M80 160 Q100 145 120 160 L115 185 Q100 190 85 185 Z" fill="#FDE6D2" stroke="#D97706"/>
+      </svg>
+    );
+
+    const Icons = {
+      Search: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>,
+      Bell: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>,
+      Plus: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/></svg>,
+      Home: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>,
+      HandHeart: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>,
+      Moon: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>,
+      Info: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>,
+      Shield: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>,
+      Book: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>,
+      Calendar: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>,
+      ChevronRight: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/></svg>,
+      ChevronLeft: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"/></svg>,
+      Bookmark: ({ filled }) => <svg className="w-5 h-5" fill={filled ? "#D88900" : "none"} stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>,
+      Share: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>,
+      Music: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12 0c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>,
+      Users: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>,
+      List: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>,
+      Sun: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>,
+      Target: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0-6C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>,
+      Play: () => <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>,
+      Pause: () => <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>,
+      Sparkles: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>,
+      Github: () => <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>,
+      Settings: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>,
+      RefreshCw: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>,
+      X: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    };
+
+    const GuruAvatar = ({ imgUrl, size = "md", showAura = true }) => {
+      const [imgError, setImgError] = useState(false);
+      const dimensions = size === "xl" ? "w-28 h-28" : size === "lg" ? "w-20 h-20" : size === "sm" ? "w-8 h-8" : "w-11 h-11";
+      const src = imgUrl || DEFAULT_GURU_JAMBHESHWAR_IMAGE;
+
+      return (
+        <div className={`relative ${dimensions} flex-shrink-0 rounded-full ${showAura ? 'animate-glow-soft' : ''}`}>
+          <div className="w-full h-full rounded-full bg-[#FCFAF5] flex items-center justify-center overflow-hidden border-2 border-amber-300/70 shadow-sm">
+            {!imgError ? (
+              <img 
+                src={src} 
+                alt="श्री गुरु जंभेश्वर भगवान" 
+                className="w-full h-full object-cover rounded-full transform hover:scale-110 transition duration-300"
+                onError={() => setImgError(true)}
+              />
+            ) : (
+              <GuruJambheshwarSVG />
+            )}
+          </div>
+          <span className="absolute bottom-0.5 right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full shadow-xs" title="सक्रिय गुरु कृपा"></span>
+        </div>
+      );
+    };
+
+    // INITIAL DEFAULT FOLDERS & DATA (FALLBACK IF GITHUB SYNC IS NOT LOADED)
+    const INITIAL_HOME_FOLDERS = [
+      { id: 'f1', title: "संपूर्ण सबदवाणी", icon: "Book", folderKey: "sabadwani", badge: "120 सबद" },
+      { id: 'f2', title: "अमावस्या दर्शन", icon: "Calendar", folderKey: "amavasya_tab", badge: "12 माह" },
+      { id: 'f3', title: "आरती संग्रह", icon: "Music", folderKey: "aarti", badge: "नित्य पाठ" },
+      { id: 'f4', title: "भजन संग्रह", icon: "Music", folderKey: "bhajan", badge: "ऑडियो" },
+      { id: 'f5', title: "साखी संग्रह", icon: "Book", folderKey: "sakhi", badge: "25 साखी" },
+      { id: 'f6', title: "गुरु मंत्र", icon: "Music", folderKey: "guru_mantra", badge: "पवित्र जाप" },
+      { id: 'f7', title: "जाप माला", icon: "Target", folderKey: "jap_mala", badge: "डिजिटल" },
+      { id: 'f8', title: "प्रमुख मेले", icon: "Users", folderKey: "melas", badge: "धाम दर्शन" },
+      { id: 'f9', title: "२९ नियम", icon: "List", folderKey: "rules", badge: "धर्म नियम" },
+      { id: 'f10', title: "चौघड़िया मुहूर्त", icon: "Sun", folderKey: "choghadiya", badge: "लाइव" },
+      { id: 'f11', title: "बिछुड़ा (विंदर)", icon: "Book", folderKey: "bichhuda", badge: "पंचांग" },
+      { id: 'f12', title: "भक्त योगदान", icon: "HandHeart", folderKey: "contribution", badge: "सेवा" },
+    ];
+
+    const INITIAL_SABADS = Array.from({ length: 120 }, (_, i) => {
+      const num = i + 1;
+      let lines = [
+        'ओ३म् गुरु चीन्हों गुरु चीन्ह पुरोहित। गुरु मुख धर्म बखाणीं।।',
+        'जो गुरु होयबा सहजे शीले सबदे नादे वेदे तिहिं गुरु का आलिंगार पिछाणी।।',
+        'छव दरशण जिहिं कै रूपण थापण, संसार बरतण निज कर थरप्या। सो गुरु प्रत्यक्ष जाणी।।',
+        'जिहिं कै खर तर गोठ निरोत्तर वाचा। रहिया रूद्र समाणी। गुरु आप संतोषी अवरां पोखी। तंत महारस बाणी।।',
+        'के के अलिया बासण होत हुताशण। तामैं खीर दुहीजूं।।',
+        'रसूवन गोरस घीय न लीयूं। तहां दूध न पाणी।।'
+      ];
+      let meaning = "भावार्थ: गुरु जंभेश्वर भगवान फरमाते हैं कि सच्चे सतगुरु की पहचान उनके आचरण, शील, शांत वाणी और वेदों/शब्दों के ज्ञान से होती है। जो आत्म-संतोषी होकर संसार का कल्याण करते हैं, वही सच्चे गुरु हैं।";
+      
+      if (num === 61) {
+        lines = [
+          'ओ३म् कै तैं कारण किरिया चुक्यो। कै तैं सूरज सामो थूक्यो।',
+          'कै तैं ऊभे कांसा मांझ्या। कै नैं छान तिणूका खैच्या।',
+          'कै तैं ब्राह्मण नवत बहोड्या। कै तैं आवा को रंभ चोरया।',
+          'कै तैं बाड़ी का बन फल तोड्या। कै तैं जोगी का खप्पर फोड्या।',
+          'कै तैं ब्राह्मण का तागा तोड्या। कै तैं बेर विरोध धन लोड्या।',
+          'कै तैं सुवा गाय का बच्च बिछोड्या। कै तैं चरती पिवती गऊ बिडारी।'
+        ];
+        meaning = "भावार्थ: 61वें शब्द में गुरु महाराज कर्म-सुधार और पाप-पुण्य का बोध कराते हैं कि अनजाने या जानबूझकर जीवों को दुःखी न करें, गऊ माता और वृक्षों की रक्षा करें।";
+      }
+      return { id: num, title: `सबद - ${num}`, verses: lines, wordCount: 142, meaning };
+    });
+
+    const INITIAL_AMAVASYA_12 = [
+      { id: 1, month: "चैत्र", subtext: "मार्च-अप्रैल • विक्रम संवत 2083", start: "29 मार्च, रविवार, 08:15:10 AM", end: "30 मार्च, सोमवार, 06:40:22 AM" },
+      { id: 2, month: "वैशाख", subtext: "अप्रैल-मई • विक्रम संवत 2083", start: "27 अप्रैल, सोमवार, 11:20:45 PM", end: "28 अप्रैल, मंगलवार, 09:12:30 PM" },
+      { id: 3, month: "ज्येष्ठ", subtext: "मई-जून • विक्रम संवत 2083", start: "27 मई, बुधवार, 01:10:00 PM", end: "28 मई, गुरुवार, 11:05:15 AM" },
+      { id: 4, month: "आषाढ़", subtext: "जून-जुलाई • विक्रम संवत 2083", start: "25 जून, गुरुवार, 02:40:12 AM", end: "26 जून, शुक्रवार, 12:30:50 AM" },
+      { id: 5, month: "श्रावण", subtext: "जुलाई-अगस्त • विक्रम संवत 2083", start: "24 जुलाई, शुक्रवार, 04:15:30 PM", end: "25 जुलाई, शनिवार, 02:10:18 PM" },
+      { id: 6, month: "भाद्रपद", subtext: "अगस्त-सितंबर • विक्रम संवत 2083", start: "23 अगस्त, रविवार, 05:50:00 AM", end: "24 अगस्त, सोमवार, 03:45:12 AM" },
+      { id: 7, month: "आश्विन", subtext: "सितंबर-अक्टूबर • विक्रम संवत 2083", start: "21 सितंबर, सोमवार, 07:20:15 PM", end: "22 सितंबर, मंगलवार, 05:15:00 PM" },
+      { id: 8, month: "कार्तिक", subtext: "अक्टूबर-नवंबर • विक्रम संवत 2083", start: "21 अक्टूबर, बुधवार, 08:40:00 AM", end: "22 अक्टूबर, गुरुवार, 06:30:25 AM" },
+      { id: 9, month: "मार्गशीर्ष", subtext: "नवंबर-दिसंबर • विक्रम संवत 2083", start: "19 नवंबर, गुरुवार, 09:55:10 PM", end: "20 नवंबर, शुक्रवार, 07:40:00 PM" },
+      { id: 10, month: "पौष", subtext: "दिसंबर-जनवरी • विक्रम संवत 2083", start: "19 दिसंबर, शनिवार, 11:05:40 AM", end: "20 दिसंबर, रविवार, 08:50:15 AM" },
+      { id: 11, month: "माघ", subtext: "जनवरी • विक्रम संवत 2082/83", start: "18 जनवरी, रविवार, 12:05:06 AM", end: "19 जनवरी, सोमवार, 01:22:37 AM" },
+      { id: 12, month: "फाल्गुन", subtext: "फ़रवरी • विक्रम संवत 2082/83", start: "16 फ़रवरी, सोमवार, 05:35:31 PM", end: "17 फ़रवरी, मंगलवार, 04:12:00 PM" }
+    ];
+
+    const INITIAL_AARTIS = [
+      { id: 1, title: "प्रातःकालीन आरती", lyrics: "ॐ जय जगदीश हरे, स्वामी जय जगदीश हरे। भक्त जनों के संकट, दास जनों के संकट, क्षण में दूर करे॥" },
+      { id: 2, title: "संध्याकालीन आरती", lyrics: "जय जंभेश्वर देवा, स्वामी जय जंभेश्वर देवा। आरती कीजै तुम्हारी, पुरे सब सेवा॥" },
+      { id: 3, title: "विष्णु आरती", lyrics: "ॐ जय श्री विश्णवे नमः, हरी ॐ जय विश्णवे नमः। सकल जगत के स्वामी, पालनकर्ता नमः॥" },
+      { id: 4, title: "29 नियम आरती", lyrics: "तीस दिन सूतक पालणी, पाँच दिन ऋतुवंती न्यारी। सेरा स्नान करो नित्य, विष्णु भक्ति प्यारी॥" }
+    ];
+
+    const INITIAL_BHAJANS = [
+      { id: 1, title: "गुरु जंभेश्वर अमृतवाणी", singer: "स्वामी जी", duration: "12:45" },
+      { id: 2, title: "विष्णु विष्णु भण रे प्राणी", singer: "भक्त मंडली", duration: "06:30" },
+      { id: 3, title: "समराथल रो धोरो सोवणो", singer: "बिश्नोई भजन", duration: "08:15" },
+      { id: 4, title: "जाम्भोलाव री महिमा अपरंपार", singer: "बिश्नोई समाज", duration: "09:20" }
+    ];
+
+    const SAKHI_LIST = Array.from({ length: 25 }, (_, i) => ({
+      id: i + 1,
+      title: `साखी - ${i + 1}`,
+      verses: [
+        `॥ साखी - ${i + 1} ॥`,
+        'गुरु जंभेश्वर उवाच - सत्य बचन साखी बखाणी।',
+        'दया धर्म का मूल है, पाप मूल अभिमान।',
+        'जस गावै सो अमर होय, पाखंड छाडो साच समाणी।।'
+      ]
+    }));
+
+    const GURU_MANTRAS = [
+      { id: 1, title: "गुरु मंत्र (ओ३म् विश्णवे नमः)", desc: "सदा प्रातः एवं संध्या काल 108 बार जाप करें।" },
+      { id: 2, title: "पाहल मंत्र", desc: "अमावस्या के दिन पाहल ग्रहण करते समय का पवित्र मंत्र।" },
+      { id: 3, title: "हवन गायत्री मंत्र", desc: "प्रातःकालीन होम/हवन करते समय का मंत्र।" }
+    ];
+
+    const INITIAL_BICHHUDA = [
+      { id: 1, month: "अगस्त", year: "2026", start: "20 अगस्त, गुरुवार, 02:30:25 AM", end: "22 अगस्त, शनिवार, 02:49:25 PM", upcoming: true }
+    ];
+    const BICHHUDA_FORBIDDEN_DEFAULT = [
+      "लकड़ी या ईंधन इकट्ठा करना",
+      "चारपाई या पलंग बुनवाना",
+      "घर की छत ढलवाना",
+      "दक्षिण दिशा की यात्रा करना"
+    ];
+    const BICHHUDA_NOTE_DEFAULT = "नोट: गुरु जम्भेश्वर भगवान ने 365 दिन के हर क्षण को ही अच्छा माना है, उन्होंने इस प्रकार के आडंबरों से बिश्नोई समाज को मुक्त रखा है फिर भी आज के समय की मांग के लिए यहां दिए गए हैं।";
+    const ABOUT_TEXT_DEFAULT = {
+      heading: "सब्दवाणी ऐप बिश्नोई समाज और अन्य श्रद्धालुओं के लिए एक निःशुल्क, सामुदायिक पहल है।",
+      disclaimerTitle: "कॉपीराइट अस्वीकरण (Disclaimer):",
+      disclaimerBody: "इस ऐप में संकलित सबदवाणी, भजन और आरती सार्वजनिक डोमेन (Public Domain) और भक्तों के स्वैच्छिक योगदान पर आधारित हैं। यह ऐप पूरी तरह से शैक्षिक और भक्ति (Devotional) उद्देश्यों के लिए बनाया गया है। इसका उद्देश्य किसी भी प्रकार का व्यावसायिक लाभ कमाना नहीं है।"
+    };
+
+    const RULES_29_DATA = [
+      { id: 1, title: "तीस दिन सूतक पाळणी", cat: "स्वास्थ्य", desc: "जन्म के बाद 30 दिन तक सूतक मानना।" },
+      { id: 2, title: "पाँच दिन ऋतुवंती न्यारी रहे", cat: "स्वास्थ्य", desc: "ऋतुवंती स्त्री को पांच दिन अलग रखकर विश्राम देना।" },
+      { id: 3, title: "सेरा करो स्नान", cat: "सदाचार", desc: "प्रतिदिन प्रातःकाल सूर्योदय से पूर्व स्नान करना।" },
+      { id: 4, title: "शील सन्तोष शुच राखो", cat: "सदाचार", desc: "उत्तम चरित्र, सन्तोष और पवित्रता रखना।" },
+      { id: 5, title: "द्विकाल संध्या करो", cat: "भक्ति", desc: "प्रातः और संध्या दोनों समय प्रभु स्मरण करना।" },
+      { id: 6, title: "सांझा आरती गावो", cat: "भक्ति", desc: "संध्या समय भगवान विष्णु की आरती गाना।" },
+      { id: 7, title: "प्रातः होम करो", cat: "पर्यावरण", desc: "प्रतिदिन प्रातःकाल हवन करना।" },
+      { id: 8, title: "पानी, ईंधन व दूध छानकर लो", cat: "जीव दया", desc: "जीव रक्षा हेतु जल, लकड़ी और दूध छानकर काम में लेना।" },
+      { id: 9, title: "वाणी सोच-विचार कर बोलो", cat: "सदाचार", desc: "सत्य और मीठी वाणी बोलना।" },
+      { id: 10, title: "क्षमा और दया धारण करो", cat: "जीव दया", desc: "प्रत्येक जीव के प्रति दया और क्षमा भाव रखना।" }
+    ];
+
+    const CHOGHADIYA_DAY = [
+      { name: 'शुभ', status: 'उत्तम', type: 'good', startHour: 6, endHour: 8, time: '06:00 AM - 07:30 AM' },
+      { name: 'रोग', status: 'वर्जित', type: 'bad', startHour: 8, endHour: 9.5, time: '07:30 AM - 09:00 AM' },
+      { name: 'उद्वेग', status: 'वर्जित', type: 'bad', startHour: 9.5, endHour: 11, time: '09:00 AM - 10:30 AM' },
+      { name: 'चर', status: 'सामान्य', type: 'neutral', startHour: 11, endHour: 12.5, time: '10:30 AM - 12:00 PM' },
+      { name: 'लाभ', status: 'उत्तम', type: 'good', startHour: 12.5, endHour: 14, time: '12:00 PM - 01:30 PM' },
+      { name: 'अमृत', status: 'सर्वोत्तम', type: 'good', startHour: 14, endHour: 15.5, time: '01:30 PM - 03:00 PM' },
+      { name: 'काल', status: 'वर्जित', type: 'bad', startHour: 15.5, endHour: 17, time: '03:00 PM - 04:30 PM' },
+      { name: 'शुभ', status: 'उत्तम', type: 'good', startHour: 17, endHour: 18.5, time: '04:30 PM - 06:00 PM' }
+    ];
+
+    const CHOGHADIYA_NIGHT = [
+      { name: 'अमृत', status: 'सर्वोत्तम', type: 'good', startHour: 18.5, endHour: 20, time: '06:00 PM - 07:30 PM' },
+      { name: 'चर', status: 'सामान्य', type: 'neutral', startHour: 20, endHour: 21.5, time: '07:30 PM - 09:00 PM' },
+      { name: 'रोग', status: 'वर्जित', type: 'bad', startHour: 21.5, endHour: 23, time: '09:00 PM - 10:30 PM' },
+      { name: 'काल', status: 'वर्जित', type: 'bad', startHour: 23, endHour: 24.5, time: '10:30 PM - 12:00 AM' },
+      { name: 'लाभ', status: 'उत्तम', type: 'good', startHour: 0, endHour: 1.5, time: '12:00 AM - 01:30 AM' },
+      { name: 'उद्वेग', status: 'वर्जित', type: 'bad', startHour: 1.5, endHour: 3, time: '01:30 AM - 03:00 AM' },
+      { name: 'शुभ', status: 'उत्तम', type: 'good', startHour: 3, endHour: 4.5, time: '03:00 AM - 04:30 AM' },
+      { name: 'अमृत', status: 'सर्वोत्तम', type: 'good', startHour: 4.5, endHour: 6, time: '04:30 AM - 06:00 AM' }
+    ];
+
+    const INITIAL_MELAS = [
+      { id: 1, title: "माघ अमावस्या मेला", date: "18 जनवरी 2026", location: "इंद्रनगर (लोहावट), खातेगांव, मेहराणा धोरा, पल्ली", desc: "माघ माह की अमावस्या का विशाल मेला।" },
+      { id: 2, title: "जूनागढ़ मेला", date: "23 जनवरी 2026", location: "श्री जंभेश्वर भगवान मंदिर, चौकी सोरठ (जूनागढ़), गुजरात", desc: "बसंत पंचमी के अवसर पर विशाल मेला।" },
+      { id: 3, title: "माधा मेला जांबा", badge: "आगामी (Upcoming)", date: "26 सितंबर 2026", location: "जांबा (फलोदी)", desc: "बिश्नोई समाज का पवित्र पुष्कर सरोवर मेला।" }
+    ];
+
+    function App() {
+      const [activeTab, setActiveTab] = useState('home');
+      const [currentFolder, setCurrentFolder] = useState('main');
+      const [selectedItem, setSelectedItem] = useState(null);
+
+      // GITHUB AUTO-SYNC CONFIGURATION STATE
+      const [githubUser, setGithubUser] = useState(() => localStorage.getItem('sabad_gh_user') || DEFAULT_GITHUB_USER);
+      const [githubRepo, setGithubRepo] = useState(() => localStorage.getItem('sabad_gh_repo') || DEFAULT_GITHUB_REPO);
+      const [githubBranch, setGithubBranch] = useState(() => localStorage.getItem('sabad_gh_branch') || DEFAULT_GITHUB_BRANCH);
+      const [isSyncing, setIsSyncing] = useState(false);
+      const [githubSynced, setGithubSynced] = useState(false);
+      const [showGithubModal, setShowGithubModal] = useState(false);
+      const [syncError, setSyncError] = useState('');
+      const [lastSyncedAt, setLastSyncedAt] = useState(null);
+      const [ghFormUser, setGhFormUser] = useState(githubUser);
+      const [ghFormRepo, setGhFormRepo] = useState(githubRepo);
+      const [ghFormBranch, setGhFormBranch] = useState(githubBranch);
+
+      // DYNAMIC APPLICATION STATE (CAN BE OVERRIDDEN BY GITHUB SYNC)
+      const [homeFolders, setHomeFolders] = useState(INITIAL_HOME_FOLDERS);
+      const [sabads, setSabads] = useState(INITIAL_SABADS);
+      const [amavasyaList, setAmavasyaList] = useState(INITIAL_AMAVASYA_12);
+      const [aartis, setAartis] = useState(INITIAL_AARTIS);
+      const [bhajans, setBhajans] = useState(INITIAL_BHAJANS);
+      const [sakhis, setSakhis] = useState(SAKHI_LIST);
+      const [rules, setRules] = useState(RULES_29_DATA);
+      const [melas, setMelas] = useState(INITIAL_MELAS);
+      const [upiId, setUpiId] = useState('ravindrasaran@icici');
+      const [upiQrUrl, setUpiQrUrl] = useState('');
+      const [todayQuote, setTodayQuote] = useState({ text: "विष्णु विष्णु तू भण रे प्राणी", author: "श्री जंभेश्वर भगवान" });
+      const [guruAvatarUrl, setGuruAvatarUrl] = useState(DEFAULT_GURU_JAMBHESHWAR_IMAGE);
+      const [appLogoUrl, setAppLogoUrl] = useState('');
+      const [adminPanelUrl, setAdminPanelUrl] = useState('');
+      // PREMIUM FONT SYSTEM — set from the admin panel's "फ़ॉन्ट" tab
+      const [fonts, setFonts] = useState({
+        heading: 'Tiro Devanagari Hindi',
+        body: 'Noto Serif Devanagari',
+        ui: 'Noto Sans Devanagari'
+      });
+      const [appTitle, setAppTitle] = useState('सबदवाणी');
+      const [appBadge, setAppBadge] = useState('');
+      const [appTagline, setAppTagline] = useState('श्री गुरु जंभेश्वर देव शरणम्');
+      const [dailyUpdate, setDailyUpdate] = useState({ enabled: false, image: '', title: '', message: '' });
+      const [bannerFace, setBannerFace] = useState(0);
+      const [panchangInfo, setPanchangInfo] = useState({ date: "14 अगस्त, शुक्रवार", tithi: "शुक्ल द्वितीया", vikram: "विक्रमी संवत 2083" });
+      const [guruMantras, setGuruMantras] = useState(GURU_MANTRAS);
+      const [bichhudaData, setBichhudaData] = useState(INITIAL_BICHHUDA);
+      const [bichhudaForbidden, setBichhudaForbidden] = useState(BICHHUDA_FORBIDDEN_DEFAULT);
+      const [bichhudaNote, setBichhudaNote] = useState(BICHHUDA_NOTE_DEFAULT);
+      const [aboutText, setAboutText] = useState(ABOUT_TEXT_DEFAULT);
+      const [bichhudaSel, setBichhudaSel] = useState(0);
+
+      const [copiedToast, setCopiedToast] = useState(false);
+      const [toastText, setToastText] = useState('विवरण कॉपी कर लिया गया है!');
+
+      // READER CONTROLS
+      const [fontSize, setFontSize] = useState(18);
+      const [readerTheme, setReaderTheme] = useState('cream'); // cream, dark, sepia
+      const [autoScroll, setAutoScroll] = useState(false);
+      const [scrollSpeed, setScrollSpeed] = useState(1);
+      const [showMeaning, setShowMeaning] = useState(false);
+      const [bookmarks, setBookmarks] = useState([1, 61]);
+
+      // DIGITAL JAP MALA
+      const [japCount, setJapCount] = useState(0);
+      const [malaCompleted, setMalaCompleted] = useState(1);
+      const [targetGoal, setTargetGoal] = useState(108);
+
+      // AUDIO CHANT SIMULATOR & AUDIO VISUALIZER
+      const [playingBhajanId, setPlayingBhajanId] = useState(null);
+      const canvasRef = useRef(null);
+
+      // CHOGHADIYA REALTIME CALCULATOR
+      const [choghadiyaTab, setChoghadiyaTab] = useState('day');
+      const [currentHour, setCurrentHour] = useState(new Date().getHours() + new Date().getMinutes()/60);
+
+      // MODALS & SEARCH
+      const [showSearch, setShowSearch] = useState(false);
+      const [searchQuery, setSearchQuery] = useState('');
+      const [showNotifications, setShowNotifications] = useState(false);
+
+      // Applies a fetched/cached data object onto all the React state slices.
+      // Pulled out of fetchGithubData so both the instant cache-load and the
+      // background network refresh can share the exact same logic.
+      const applyGithubData = (data) => {
+            if (data.homeFolders) setHomeFolders(data.homeFolders);
+            if (data.sabads) setSabads(data.sabads);
+            if (data.amavasyaList) setAmavasyaList(data.amavasyaList);
+            if (data.aartis) setAartis(data.aartis);
+            if (data.bhajans) setBhajans(data.bhajans);
+            if (data.sakhis) setSakhis(data.sakhis);
+            if (data.rules) setRules(data.rules);
+            if (data.melas) setMelas(data.melas);
+            if (data.upiId) setUpiId(data.upiId);
+            if (data.todayQuote) setTodayQuote(data.todayQuote);
+            if (data.guruAvatarUrl) setGuruAvatarUrl(data.guruAvatarUrl);
+            if (data.appLogoUrl !== undefined) setAppLogoUrl(data.appLogoUrl);
+            if (data.adminPanelUrl !== undefined) setAdminPanelUrl(data.adminPanelUrl);
+            if (data.appTitle) setAppTitle(data.appTitle);
+            if (data.appBadge !== undefined) setAppBadge(data.appBadge);
+            if (data.appTagline) setAppTagline(data.appTagline);
+            if (data.dailyUpdate) setDailyUpdate(data.dailyUpdate);
+            if (data.panchangInfo) setPanchangInfo(data.panchangInfo);
+            if (data.upiQrUrl !== undefined) setUpiQrUrl(data.upiQrUrl);
+            if (data.guruMantras) setGuruMantras(data.guruMantras);
+            if (data.bichhudaData) setBichhudaData(data.bichhudaData);
+            if (data.bichhudaForbidden) setBichhudaForbidden(data.bichhudaForbidden);
+            if (data.bichhudaNote) setBichhudaNote(data.bichhudaNote);
+            if (data.aboutText) setAboutText(data.aboutText);
+            if (data.fonts) setFonts((f) => ({ ...f, ...data.fonts }));
+
+            setGithubSynced(true);
+            setLastSyncedAt(new Date());
+            setSyncError('');
+      };
+
+      // Hides the instant boot splash the first time we have *any* data on screen
+      // (cached or fresh) — never leaves the user staring at a blank/frozen page.
+      const hideBootSplash = () => {
+        const el = document.getElementById('bootSplash');
+        if (el) { el.style.opacity = '0'; setTimeout(() => el.remove(), 400); }
+      };
+
+      // BUG FIX + SPEED FIX (rewritten): the old version fetched raw.githubusercontent.com
+      // fresh on every single load with cache:'no-store' + a Date.now() cache-buster — this
+      // guaranteed a slow, always-uncached network round trip before ANYTHING could render,
+      // and gave zero offline support. New strategy ("stale-while-revalidate"):
+      //   1) Paint instantly from the last-known-good copy saved in localStorage (if any).
+      //   2) In the background, fetch the latest JSON from jsDelivr's CDN (fast, cached
+      //      globally, purged instantly by the admin panel on publish). Falls back to the
+      //      raw GitHub URL if jsDelivr hasn't picked up a brand-new publish yet.
+      //   3) Save the fresh copy to localStorage so next launch (and offline launches) are instant too.
+      const fetchGithubData = async (isBackgroundRefresh) => {
+        if (!githubUser || !githubRepo) {
+          setSyncError('GitHub Owner/Repo सेट नहीं है — नीचे ⚙️ सेटिंग्स से भरें।');
+          hideBootSplash();
+          return;
+        }
+        // Step 1: instant paint from cache (only on first load, not on background refresh)
+        if (!isBackgroundRefresh) {
+          try {
+            const cachedRaw = localStorage.getItem(DATA_CACHE_KEY);
+            if (cachedRaw) {
+              applyGithubData(JSON.parse(cachedRaw));
+              setGithubSynced(true);
+              hideBootSplash();
+            }
+          } catch (_) { /* corrupt cache, ignore and fall through to network */ }
+        }
+        setIsSyncing(true);
+        setSyncError('');
+        try {
+          let res;
+          try {
+            res = await fetch(jsdelivrUrl(githubUser, githubRepo, githubBranch, GITHUB_DATA_PATH), { cache: 'default' });
+            if (!res.ok) throw new Error('jsdelivr-miss');
+          } catch (_) {
+            // jsDelivr hasn't mirrored this yet (e.g. repo just made public, or brand-new
+            // file) — fall back straight to GitHub's raw file.
+            res = await fetch(rawGithubUrl(githubUser, githubRepo, githubBranch, GITHUB_DATA_PATH) + `?_cb=${Date.now()}`, { cache: 'no-store' });
+          }
+          if (res.ok) {
+            const freshData = await res.json();
+            applyGithubData(freshData);
+            try { localStorage.setItem(DATA_CACHE_KEY, JSON.stringify(freshData)); } catch (_) { /* storage full/blocked — non-fatal */ }
+            hideBootSplash();
+          } else if (res.status === 404) {
+            setGithubSynced(false);
+            setSyncError(`फ़ाइल नहीं मिली (404) — ${githubUser}/${githubRepo} (branch: ${githubBranch}) में "${GITHUB_DATA_PATH}" मौजूद नहीं है, या repo अभी तक admin पैनल से Publish नहीं हुआ, या repo Private है (यह ऐप बिना लॉगिन के सिर्फ़ Public repo से डेटा पढ़ सकता है)।`);
+            hideBootSplash();
+          } else {
+            setGithubSynced(false);
+            setSyncError(`GitHub से डेटा नहीं आया (HTTP ${res.status})। नीचे Owner/Repo/Branch जांचें कि वे बिल्कुल Admin पैनल जैसे ही हैं।`);
+            hideBootSplash();
+          }
+        } catch (e) {
+          console.log("GitHub sync fallback to cached/default dataset");
+          setGithubSynced(false);
+          setSyncError('नेटवर्क एरर — ऑफ़लाइन दिख रहे हैं (पिछली बार सेव किया डेटा दिखाया जा रहा है)।');
+          hideBootSplash();
+        } finally {
+          setIsSyncing(false);
+        }
+      };
+
+      const saveGithubSettings = () => {
+        const u = ghFormUser.trim() || DEFAULT_GITHUB_USER;
+        const r = ghFormRepo.trim() || DEFAULT_GITHUB_REPO;
+        const b = ghFormBranch.trim() || DEFAULT_GITHUB_BRANCH;
+        localStorage.setItem('sabad_gh_user', u);
+        localStorage.setItem('sabad_gh_repo', r);
+        localStorage.setItem('sabad_gh_branch', b);
+        setGithubUser(u);
+        setGithubRepo(r);
+        setGithubBranch(b);
+        setShowGithubModal(false);
+      };
+
+      // FETCH GITHUB DATA ON MOUNT, then quietly re-check every 5 minutes so long
+      // sessions (app left open) still pick up new admin-panel publishes.
+      useEffect(() => {
+        fetchGithubData(false);
+        const iv = setInterval(() => fetchGithubData(true), 5 * 60 * 1000);
+        return () => clearInterval(iv);
+      }, [githubUser, githubRepo, githubBranch]);
+
+      // Safety net: never leave the boot splash on screen for more than 6s even if
+      // something above silently failed (e.g. localStorage blocked in a private tab).
+      useEffect(() => {
+        const t = setTimeout(hideBootSplash, 6000);
+        return () => clearTimeout(t);
+      }, []);
+
+      // APPLY ADMIN-SELECTED FONTS — pushes CSS variables + loads the exact
+      // Google Font weights needed, so any of the 20 curated fonts works instantly.
+      useEffect(() => {
+        const root = document.documentElement.style;
+        root.setProperty('--font-heading', `'${fonts.heading}'`);
+        root.setProperty('--font-body', `'${fonts.body}'`);
+        root.setProperty('--font-ui', `'${fonts.ui}'`);
+        const families = [...new Set([fonts.heading, fonts.body, fonts.ui])]
+          .filter((f) => f && f !== 'Kohinoor Devanagari')
+          .map((f) => `family=${encodeURIComponent(f).replace(/%20/g, '+')}:wght@400;500;600;700;800;900`)
+          .join('&');
+        const link = document.getElementById('dynamicFontLink');
+        if (link && families) link.href = `https://fonts.googleapis.com/css2?${families}&display=swap`;
+      }, [fonts.heading, fonts.body, fonts.ui]);
+
+      // UPDATE REALTIME CLOCK HOUR
+      useEffect(() => {
+        const timer = setInterval(() => {
+          const now = new Date();
+          setCurrentHour(now.getHours() + now.getMinutes() / 60);
+        }, 30000);
+        return () => clearInterval(timer);
+      }, []);
+
+      // ROTATE HOME BANNER BETWEEN "TODAY'S THOUGHT" AND THE ADMIN-SET DAILY UPDATE
+      useEffect(() => {
+        if (!dailyUpdate?.enabled) { setBannerFace(0); return; }
+        const timer = setInterval(() => {
+          setBannerFace((f) => (f === 0 ? 1 : 0));
+        }, 6000);
+        return () => clearInterval(timer);
+      }, [dailyUpdate?.enabled]);
+
+      const showToastMessage = (msg) => {
+        setToastText(msg);
+        setCopiedToast(true);
+        setTimeout(() => setCopiedToast(false), 2800);
+      };
+
+      // WEB AUDIO SYNTHESIZER FOR TEMPLE BELL / SHANKH / JAP TAPS
+      const playDevotionalSound = (type) => {
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          if (type === 'bell') {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, ctx.currentTime);
+            gain.gain.setValueAtTime(0.3, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 2.5);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 2.5);
+          } else if (type === 'tap') {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(523.25, ctx.currentTime);
+            gain.gain.setValueAtTime(0.12, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.12);
+          } else if (type === 'shankh') {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(220, ctx.currentTime);
+            osc.frequency.linearRampToValueAtTime(280, ctx.currentTime + 1.5);
+            gain.gain.setValueAtTime(0.01, ctx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.25, ctx.currentTime + 0.8);
+            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 3.0);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 3.0);
+          }
+        } catch (e) {}
+      };
+
+      // AUTO SCROLL READER
+      useEffect(() => {
+        let scrollInterval;
+        if (autoScroll) {
+          scrollInterval = setInterval(() => {
+            window.scrollBy({ top: scrollSpeed * 2, behavior: 'smooth' });
+          }, 100);
+        }
+        return () => clearInterval(scrollInterval);
+      }, [autoScroll, scrollSpeed]);
+
+      // AUDIO SPECTRUM VISUALIZER FOR BHAJANS
+      useEffect(() => {
+        if (playingBhajanId && canvasRef.current) {
+          const canvas = canvasRef.current;
+          const ctx = canvas.getContext('2d');
+          let animId;
+          const draw = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const bars = 24;
+            const width = canvas.width / bars;
+            for (let i = 0; i < bars; i++) {
+              const height = Math.sin(Date.now() / 200 + i) * 15 + 20;
+              ctx.fillStyle = '#D88900';
+              ctx.fillRect(i * width, canvas.height - height, width - 2, height);
+            }
+            animId = requestAnimationFrame(draw);
+          };
+          draw();
+          return () => cancelAnimationFrame(animId);
+        }
+      }, [playingBhajanId]);
+
+      const copyToClipboard = (text) => {
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(text);
+        } else {
+          const textarea = document.createElement('textarea');
+          textarea.value = text;
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textarea);
+        }
+        showToastMessage("विवरण कॉपी कर लिया गया है!");
+      };
+
+      const handleJapClick = () => {
+        playDevotionalSound('tap');
+        if (navigator.vibrate) navigator.vibrate(25);
+        setJapCount((prev) => {
+          const next = prev + 1;
+          if (next >= targetGoal) {
+            playDevotionalSound('bell');
+            setMalaCompleted((m) => m + 1);
+            return 0;
+          }
+          return next;
+        });
+      };
+
+      const toggleBookmark = (id) => {
+        setBookmarks(prev => prev.includes(id) ? prev.filter(b => b !== id) : [...prev, id]);
+      };
+
+      const openFolder = (folderName, itemData = null) => {
+        setCurrentFolder(folderName);
+        if (itemData) setSelectedItem(itemData);
+        setAutoScroll(false);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+
+      // SABAD READER — swipe / next-prev navigation between sabads
+      const touchStartRef = useRef({ x: 0, y: 0 });
+      const goToAdjacentSabad = (direction) => {
+        if (!selectedItem) return;
+        const idx = sabads.findIndex(s => s.id === selectedItem.id);
+        if (idx === -1) return;
+        const nextIdx = idx + direction;
+        if (nextIdx < 0 || nextIdx >= sabads.length) return;
+        setSelectedItem(sabads[nextIdx]);
+        setShowMeaning(false);
+        setAutoScroll(false);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+      const handleReaderTouchStart = (e) => {
+        const t = e.touches[0];
+        touchStartRef.current = { x: t.clientX, y: t.clientY };
+      };
+      const handleReaderTouchEnd = (e) => {
+        const t = e.changedTouches[0];
+        const dx = t.clientX - touchStartRef.current.x;
+        const dy = t.clientY - touchStartRef.current.y;
+        if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+          if (dx < 0) goToAdjacentSabad(1);   // swipe left (finger moves left) → next sabad
+          else goToAdjacentSabad(-1);          // swipe right (finger moves right) → previous sabad
+        }
+      };
+
+      const logoTapCountRef = useRef(0);
+      const logoTapTimerRef = useRef(null);
+      const handleLogoTap = () => {
+        setActiveTab('home');
+        setCurrentFolder('main');
+        logoTapCountRef.current += 1;
+        if (logoTapTimerRef.current) clearTimeout(logoTapTimerRef.current);
+        if (logoTapCountRef.current >= 5) {
+          logoTapCountRef.current = 0;
+          setGhFormUser(githubUser);
+          setGhFormRepo(githubRepo);
+          setGhFormBranch(githubBranch);
+          setShowGithubModal(true);
+        } else {
+          logoTapTimerRef.current = setTimeout(() => { logoTapCountRef.current = 0; }, 2500);
+        }
+      };
+
+      return (
+        <div className="min-h-screen bg-[#FCFAF5] text-[#4A3424] font-noto-sans antialiased selection:bg-amber-200 pb-24 max-w-md mx-auto shadow-2xl relative border-x border-amber-100/60">
+          
+          {/* TOAST NOTIFICATION */}
+          {copiedToast && (
+            <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-amber-900 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg border border-amber-400 animate-bounce flex items-center gap-1.5 font-tiro">
+              <span>✓</span> {toastText}
+            </div>
+          )}
+
+          {/* GLOBAL STICKY HEADER */}
+          <header className="sticky top-0 z-40 bg-[#FCFAF5]/95 backdrop-blur-md border-b border-amber-200/60 px-4 py-2.5 flex items-center justify-between shadow-xs">
+            <div className="flex items-center space-x-3 cursor-pointer" onClick={handleLogoTap}>
+              <GuruAvatar imgUrl={appLogoUrl || guruAvatarUrl} size="md" showAura={true} />
+              <div>
+                <h1 className="text-2xl font-black text-[#4A3424] tracking-wide font-tiro leading-none flex items-center gap-1.5">
+                  {appTitle}
+                  {appBadge && <span className="text-[10px] bg-amber-100 text-amber-900 font-bold px-1.5 py-0.5 rounded-full border border-amber-200">{appBadge}</span>}
+                </h1>
+                <span className="text-[9px] text-amber-800 font-semibold tracking-tight">{appTagline}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-1 text-amber-900">
+              <button onClick={() => setShowSearch(true)} className="p-2 hover:bg-amber-100/60 active:scale-90 rounded-full transition" title="खोजें">
+                <Icons.Search />
+              </button>
+              <button onClick={() => setShowNotifications(true)} className="p-2 hover:bg-amber-100/60 active:scale-90 rounded-full transition relative" title="सूचनाएं">
+                <span className="inline-block animate-bell-ring origin-top">
+                  <Icons.Bell />
+                </span>
+                <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center animate-pulse">1</span>
+              </button>
+            </div>
+          </header>
+
+          {/* GITHUB SYNC SETTINGS MODAL */}
+          {showGithubModal && (
+            <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center px-4 animate-fadeIn">
+              <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-amber-200">
+                <div className="p-4 bg-gradient-to-r from-amber-600 to-amber-700 text-white flex items-center justify-between">
+                  <h3 className="font-bold text-sm flex items-center gap-2"><Icons.Github /> GitHub सिंक सेटिंग्स</h3>
+                  <button onClick={() => setShowGithubModal(false)} className="p-1 rounded-full bg-white/20"><Icons.X /></button>
+                </div>
+                <div className="p-4 space-y-3">
+                  <div className={`text-xs rounded-xl p-2.5 border flex items-center gap-2 ${githubSynced ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${githubSynced ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+                    <span>
+                      {isSyncing ? 'सिंक हो रहा है...' : githubSynced ? `जुड़ा हुआ है ✓ ${lastSyncedAt ? '(अंतिम सिंक: ' + lastSyncedAt.toLocaleTimeString() + ')' : ''}` : (syncError || 'अभी GitHub से डेटा नहीं आया')}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-amber-800/80 leading-relaxed">
+                    यहां जो Owner / Repository / Branch डालें, वो <b>बिल्कुल वैसा ही</b> होना चाहिए जैसा Admin पैनल के GitHub कनेक्शन में डाला गया है — और वह repository <b>Public</b> होनी चाहिए, तभी यह ऐप उसमें से <code>sabadwani-data.json</code> पढ़ पाएगा।
+                  </p>
+                  <div>
+                    <label className="text-[11px] font-bold text-amber-900">GitHub Owner (Username)</label>
+                    <input type="text" value={ghFormUser} onChange={(e) => setGhFormUser(e.target.value)} placeholder="vishnoiji29" className="w-full mt-1 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-sm text-amber-950" />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-amber-900">Repository का नाम</label>
+                    <input type="text" value={ghFormRepo} onChange={(e) => setGhFormRepo(e.target.value)} placeholder="sabadwani-app" className="w-full mt-1 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-sm text-amber-950" />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-amber-900">Branch</label>
+                    <input type="text" value={ghFormBranch} onChange={(e) => setGhFormBranch(e.target.value)} placeholder="main" className="w-full mt-1 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-sm text-amber-950" />
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <button onClick={saveGithubSettings} className="flex-1 bg-amber-700 text-white font-bold text-sm py-2.5 rounded-xl active:scale-95 transition">सेव करें और सिंक करें</button>
+                    <button onClick={() => fetchGithubData(true)} disabled={isSyncing} className="p-2.5 rounded-xl border border-amber-300 text-amber-800 active:scale-90 transition disabled:opacity-50" title="अभी दोबारा सिंक करें">
+                      <Icons.RefreshCw />
+                    </button>
+                  </div>
+                  {adminPanelUrl && (
+                    <a
+                      href={adminPanelUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 w-full border border-amber-300 text-amber-800 font-bold text-sm py-2.5 rounded-xl active:scale-95 transition"
+                    >
+                      <Icons.Settings /> Admin Panel खोलें
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* SEARCH MODAL */}
+          {showSearch && (
+            <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-start justify-center pt-10 px-4 animate-fadeIn">
+              <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-amber-200">
+                <div className="p-3 bg-amber-50 border-b border-amber-200 flex items-center gap-2">
+                  <Icons.Search />
+                  <input 
+                    type="text" 
+                    placeholder="सबद, नियम, आरती या मेला खोजें..." 
+                    className="w-full bg-transparent text-xs font-semibold text-amber-950 focus:outline-none"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    autoFocus
+                  />
+                  <button onClick={() => setShowSearch(false)} className="text-xs bg-amber-200 text-amber-900 font-bold px-3 py-1 rounded-full font-tiro">
+                    बंद
+                  </button>
+                </div>
+                <div className="p-3 max-h-80 overflow-y-auto space-y-2">
+                  {sabads.filter(s => s.title.includes(searchQuery) || searchQuery === '').slice(0, 6).map(s => (
+                    <div key={s.id} onClick={() => { setShowSearch(false); openFolder('sabad_reader', s); }} className="p-3 rounded-2xl border border-amber-100 hover:bg-amber-50 cursor-pointer flex justify-between items-center transition">
+                      <div>
+                        <span className="font-bold text-xs text-amber-900 font-tiro">{s.title}</span>
+                        <p className="text-[10px] text-amber-800/70 truncate w-64 font-noto-serif">{s.verses?.[0]}</p>
+                      </div>
+                      <Icons.ChevronRight />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* NOTIFICATION MODAL */}
+          {showNotifications && (
+            <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-start justify-center pt-16 px-4">
+              <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-amber-200">
+                <div className="p-3.5 bg-gradient-to-r from-amber-600 to-amber-700 text-white flex justify-between items-center">
+                  <h3 className="font-bold text-xs flex items-center gap-1.5 font-tiro"><Icons.Bell /> महत्वपूर्ण देव संदेश</h3>
+                  <button onClick={() => setShowNotifications(false)} className="text-xs bg-white/20 px-3 py-1 rounded-full font-bold">बंद</button>
+                </div>
+                <div className="p-4 space-y-3 text-xs">
+                  <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200">
+                    <span className="font-bold text-amber-900 font-tiro">माघ अमावस्या मेला सूचना</span>
+                    <p className="text-amber-800 mt-1 font-noto-sans">18 जनवरी को समराथल धोरा एवं मुकाम धाम में विशाल मेला आयोजित होगा।</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MAIN SCREEN CONTENT */}
+          <main className="p-3.5 space-y-3.5">
+
+            {activeTab === 'home' && currentFolder === 'main' && (
+              <>
+                {/* TODAY'S THOUGHT CARD — premium, compact, and cross-fades smoothly into the
+                    admin-set daily update banner (when enabled) using a CSS-grid overlap so the
+                    two faces never "jump" — only opacity + a gentle scale/slide ever animate. */}
+                <div
+                  className="relative rounded-2xl shadow-lg overflow-hidden border border-amber-300/40 animate-rise-in grid"
+                  style={{ '--d': '0.05s' }}
+                >
+                  {/* QUOTE FACE */}
+                  <div
+                    className={`[grid-area:1/1] p-4 bg-gradient-to-br from-[#E69500] via-[#D88900] to-[#B86B00] text-white transition-all duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                      dailyUpdate?.enabled
+                        ? (bannerFace === 0 ? 'opacity-100 scale-100 translate-y-0 z-10' : 'opacity-0 scale-[0.97] -translate-y-1 pointer-events-none z-0')
+                        : 'opacity-100 scale-100 z-10'
+                    }`}
+                  >
+                    <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
+                      <div className="absolute top-0 -left-1/2 w-1/3 h-full bg-gradient-to-r from-transparent via-white/25 to-transparent animate-banner-shine"></div>
+                    </div>
+                    <div className="absolute -right-4 -top-4 opacity-20 text-white p-2">
+                      <Icons.Sun />
+                    </div>
+
+                    <div className="flex items-center space-x-2 mb-1.5">
+                      <span className="text-base">❝</span>
+                      <span className="text-xs font-bold tracking-wide text-amber-100 font-tiro">आज का सुविचार</span>
+                    </div>
+
+                    <blockquote className="text-base font-bold leading-relaxed mb-2.5 text-amber-50 font-tiro drop-shadow-xs">
+                      "{todayQuote.text}"
+                    </blockquote>
+
+                    <div className="flex justify-between items-center border-t border-amber-400/30 pt-2 text-[11px] text-amber-100 font-tiro font-bold">
+                      <button onClick={() => copyToClipboard(`"${todayQuote.text}" – ${todayQuote.author}`)} className="flex items-center gap-1 bg-white/10 px-2.5 py-1 rounded-full hover:bg-white/20">
+                        <Icons.Share /> शेयर करें
+                      </button>
+                      <span>– {todayQuote.author}</span>
+                    </div>
+                  </div>
+
+                  {/* DAILY UPDATE FACE (admin-controlled) */}
+                  {dailyUpdate?.enabled && (
+                    <div
+                      className={`[grid-area:1/1] p-4 bg-gradient-to-br from-[#E69500] via-[#D88900] to-[#B86B00] text-white transition-all duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                        bannerFace === 1 ? 'opacity-100 scale-100 translate-y-0 z-10' : 'opacity-0 scale-[0.97] translate-y-1 pointer-events-none z-0'
+                      }`}
+                    >
+                      <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
+                        <div className="absolute top-0 -left-1/2 w-1/3 h-full bg-gradient-to-r from-transparent via-white/25 to-transparent animate-banner-shine"></div>
+                      </div>
+                      <div className="absolute -right-4 -top-4 opacity-20 text-white p-2">
+                        <Icons.Sun />
+                      </div>
+
+                      <div className="flex items-start gap-3">
+                        <div className="relative w-16 h-16 rounded-2xl overflow-hidden border-2 border-white/40 shadow-md flex-shrink-0 bg-white/10">
+                          <img src={dailyUpdate.image || guruAvatarUrl} className="w-full h-full object-cover" alt="" />
+                          <span className="absolute -bottom-1.5 -right-1.5 w-5 h-5 bg-amber-400 rounded-full flex items-center justify-center border-2 border-white text-white text-[10px] font-black shadow-sm">✓</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-black text-sm text-amber-50 font-tiro leading-snug">{dailyUpdate.title}</p>
+                          <p className="text-[11px] text-amber-100/95 mt-1 leading-relaxed font-noto-sans">{dailyUpdate.message}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* TODAY'S PANCHANG CARD */}
+                <div className="bg-white rounded-2xl p-3.5 border border-amber-200/80 shadow-xs flex items-center justify-between animate-rise-in" style={{ '--d': '0.12s' }}>
+                  <div>
+                    <h3 className="font-bold text-xs text-amber-900 font-tiro">आज का पंचांग</h3>
+                    <p className="text-xs font-semibold text-amber-950 mt-0.5">{panchangInfo.date}</p>
+                  </div>
+
+                  <div className="w-11 h-11 rounded-full bg-amber-50 border border-amber-200 flex flex-col items-center justify-center text-amber-800 shadow-xs animate-glow-faint">
+                    <Icons.Calendar />
+                    <span className="text-[7px] font-bold text-amber-700 leading-none mt-0.5 font-noto-sans">कैलेंडर</span>
+                  </div>
+
+                  <div className="text-right">
+                    <h3 className="font-bold text-xs text-amber-900 font-tiro">{panchangInfo.tithi}</h3>
+                    <p className="text-[11px] text-amber-800/80 mt-0.5">{panchangInfo.vikram}</p>
+                  </div>
+                </div>
+
+                {/* DYNAMIC FOLDERS GRID */}
+                <div className="grid grid-cols-3 gap-2.5">
+                  {homeFolders.map((item, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        if (item.folderKey === 'amavasya_tab') {
+                          setActiveTab('amavasya');
+                        } else {
+                          openFolder(item.folderKey);
+                        }
+                      }}
+                      className="bg-white rounded-2xl p-3 border border-amber-100/90 shadow-xs hover:shadow-md transition active:scale-95 flex flex-col items-center text-center justify-center min-h-[98px] group hover:border-amber-300 tap-card animate-rise-in"
+                      style={{ '--d': `${0.16 + idx * 0.035}s` }}
+                    >
+                      <div className="w-10 h-10 rounded-2xl bg-[#FCFAF5] border border-amber-200/70 flex items-center justify-center text-amber-800 mb-1.5 shadow-xs group-hover:bg-amber-100/60 transition">
+                        {item.icon === 'Book' && <Icons.Book />}
+                        {item.icon === 'Calendar' && <Icons.Calendar />}
+                        {item.icon === 'Music' && <Icons.Music />}
+                        {item.icon === 'Target' && <Icons.Target />}
+                        {item.icon === 'Users' && <Icons.Users />}
+                        {item.icon === 'List' && <Icons.List />}
+                        {item.icon === 'Sun' && <Icons.Sun />}
+                        {item.icon === 'HandHeart' && <Icons.HandHeart />}
+                      </div>
+                      <span className="text-[11px] font-bold text-amber-950 leading-tight font-tiro">
+                        {item.title}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+              </>
+            )}
+
+            {(activeTab === 'support' || currentFolder === 'contribution') && (
+              <div className="space-y-3.5 animate-fadeIn">
+                <div className="bg-gradient-to-r from-amber-600 via-amber-700 to-yellow-700 text-white rounded-2xl p-3.5 flex items-center justify-between shadow-md">
+                  <button onClick={() => { setActiveTab('home'); setCurrentFolder('main'); }} className="p-1 rounded-full bg-white/20 hover:bg-white/30">
+                    <Icons.ChevronLeft />
+                  </button>
+                  <h2 className="font-black text-lg font-tiro">
+                    ॥ विशेष सहयोग ॥
+                  </h2>
+                  <Icons.HandHeart />
+                </div>
+
+                <p className="text-center text-xs text-amber-900/90 leading-relaxed px-2 font-medium font-noto-sans">
+                  इस निःशुल्क और विज्ञापन-मुक्त भक्ति ऐप को सुचारू रूप से चलाने एवं प्रचार हेतु स्वैच्छिक योगदान करें।
+                </p>
+
+                {/* UPI MAIN CARD */}
+                <div className="bg-white rounded-3xl p-5 border border-amber-200 shadow-md text-center space-y-4 font-noto-sans">
+                  <h3 className="font-black text-sm text-amber-950 font-tiro">
+                    UPI द्वारा सहयोग करें
+                  </h3>
+
+                  <div className="w-56 h-56 bg-white border-2 border-amber-300 rounded-3xl p-3 mx-auto shadow-inner flex flex-col items-center justify-center relative">
+                    <img
+                      src={upiQrUrl || `https://api.qrserver.com/v1/create-qr-code/?size=280x280&margin=8&data=${encodeURIComponent(`upi://pay?pa=${upiId}&pn=Sabadwani%20Seva%20Sangh&cu=INR`)}`}
+                      alt="UPI भुगतान QR कोड"
+                      className="w-full h-full object-contain rounded-2xl"
+                    />
+                  </div>
+                  <div className="text-[11px] text-amber-800 font-bold font-tiro">सब्दवाणी सेवा संघ</div>
+
+                  <button onClick={() => copyToClipboard(upiId)} className="w-full bg-gradient-to-r from-amber-600 to-amber-700 text-white font-bold py-3.5 rounded-2xl shadow-md font-tiro text-xs hover:from-amber-700 transition">
+                    UPI ID कॉपी करें ({upiId})
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {currentFolder === 'sabadwani' && (
+              <div className="space-y-3 animate-fadeIn">
+                <div className="bg-gradient-to-r from-amber-600 to-amber-700 text-white p-3.5 rounded-2xl shadow-md flex items-center justify-between">
+                  <button onClick={() => setCurrentFolder('main')} className="p-1 rounded-full bg-white/20"><Icons.ChevronLeft /></button>
+                  <h2 className="font-bold text-base font-tiro">॥ संपूर्ण सबदवाणी ({sabads.length}) ॥</h2>
+                  <Icons.Book />
+                </div>
+
+                <div className="space-y-2">
+                  {sabads.map((sabad) => (
+                    <div key={sabad.id} onClick={() => openFolder('sabad_reader', sabad)} className="bg-white rounded-2xl p-3.5 border border-amber-100 shadow-xs flex justify-between items-center cursor-pointer hover:bg-amber-50/60 transition">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-9 h-9 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-800 shadow-xs">
+                          <Icons.Book />
+                        </div>
+                        <div>
+                          <span className="font-bold text-xs text-amber-950 font-tiro">{sabad.title}</span>
+                          <p className="text-[10px] text-amber-800/60 truncate w-56 font-noto-serif">{sabad.verses?.[0]}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        {bookmarks.includes(sabad.id) && <Icons.Bookmark filled={true} />}
+                        <Icons.ChevronRight />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {currentFolder === 'sabad_reader' && selectedItem && (
+              <div className="space-y-3.5 animate-fadeIn">
+                {/* TOOLBAR FOR READER */}
+                <div className="bg-white p-2.5 rounded-2xl border border-amber-200 shadow-xs flex items-center justify-between text-xs font-tiro">
+                  <button onClick={() => setCurrentFolder('sabadwani')} className="p-1 text-amber-900"><Icons.ChevronLeft /></button>
+                  
+                  <div className="flex items-center space-x-2">
+                    <button onClick={() => setReaderTheme(readerTheme === 'cream' ? 'dark' : readerTheme === 'dark' ? 'sepia' : 'cream')} className="px-2.5 py-1 bg-amber-100 rounded-lg font-bold">
+                      🎨 थीम
+                    </button>
+                    <button onClick={() => setAutoScroll(!autoScroll)} className={`px-2.5 py-1 rounded-lg font-bold ${autoScroll ? 'bg-green-600 text-white' : 'bg-amber-100'}`}>
+                      {autoScroll ? '⏸ रोकें' : '▶ स्क्रॉल'}
+                    </button>
+                  </div>
+
+                  <div className="flex items-center space-x-1 font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200">
+                    <button onClick={() => setFontSize(Math.max(14, fontSize - 2))}>A-</button>
+                    <span>|</span>
+                    <button onClick={() => setFontSize(Math.min(28, fontSize + 2))}>A+</button>
+                  </div>
+                </div>
+
+                {/* SABAD CONTENT CARD WITH THEMES — swipe left/right to move to next/previous sabad */}
+                <div
+                  className={`rounded-3xl p-6 border shadow-lg text-center space-y-4 relative ${
+                    readerTheme === 'dark' ? 'glass-card-dark' : readerTheme === 'sepia' ? 'glass-card-sepia' : 'bg-white border-amber-200'
+                  }`}
+                  onTouchStart={handleReaderTouchStart}
+                  onTouchEnd={handleReaderTouchEnd}
+                >
+                  <div className="flex justify-between items-center border-b border-amber-200/50 pb-3">
+                    <button onClick={() => toggleBookmark(selectedItem.id)}>
+                      <Icons.Bookmark filled={bookmarks.includes(selectedItem.id)} />
+                    </button>
+                    <span className="inline-block bg-amber-500/20 text-amber-900 font-bold px-4 py-1 rounded-full font-tiro text-sm border border-amber-300">
+                      ॥ {selectedItem.title} ॥
+                    </span>
+                    <button onClick={() => setShowMeaning(!showMeaning)} className="text-xs font-bold text-amber-800">
+                      {showMeaning ? 'शब्द' : 'भावार्थ'}
+                    </button>
+                  </div>
+
+                  {selectedItem.audioUrl && (
+                    <audio
+                      key={selectedItem.id}
+                      controls
+                      preload="none"
+                      className="w-full h-10 rounded-full"
+                      src={resolveAssetUrl(selectedItem.audioUrl, githubUser, githubRepo, githubBranch)}
+                    >
+                      आपका ब्राउज़र ऑडियो सपोर्ट नहीं करता।
+                    </audio>
+                  )}
+
+                  {!showMeaning ? (
+                    <div className="leading-relaxed font-noto-serif" style={{ fontSize: `${fontSize}px` }}>
+                      {selectedItem.verses?.map((line, idx) => (
+                        <p key={idx} className="py-1.5">{line}</p>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="bg-amber-50/80 p-4 rounded-2xl border border-amber-200 text-left text-xs font-noto-sans leading-relaxed text-amber-950">
+                      <p className="font-bold text-amber-900 mb-1 font-tiro">भावार्थ विवरण:</p>
+                      {selectedItem.meaning}
+                    </div>
+                  )}
+
+                  <p className="text-[10px] text-amber-700/50 font-noto-sans">◀ स्वाइप करें — अगला/पिछला सबद ▶</p>
+                </div>
+
+                {/* PREV / NEXT NAVIGATION BAR */}
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    onClick={() => goToAdjacentSabad(-1)}
+                    disabled={sabads.findIndex(s => s.id === selectedItem.id) <= 0}
+                    className="flex-1 flex items-center justify-center gap-1 bg-white border border-amber-200 rounded-2xl py-2.5 text-xs font-bold text-amber-900 font-tiro shadow-xs disabled:opacity-40 active:scale-95 transition"
+                  >
+                    <Icons.ChevronLeft /> पिछला सबद
+                  </button>
+                  <span className="text-[10px] text-amber-700 font-bold px-2 whitespace-nowrap">
+                    {sabads.findIndex(s => s.id === selectedItem.id) + 1} / {sabads.length}
+                  </span>
+                  <button
+                    onClick={() => goToAdjacentSabad(1)}
+                    disabled={sabads.findIndex(s => s.id === selectedItem.id) >= sabads.length - 1}
+                    className="flex-1 flex items-center justify-center gap-1 bg-white border border-amber-200 rounded-2xl py-2.5 text-xs font-bold text-amber-900 font-tiro shadow-xs disabled:opacity-40 active:scale-95 transition"
+                  >
+                    अगला सबद <Icons.ChevronRight />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'amavasya' && (
+              <div className="space-y-3.5 animate-fadeIn">
+                <div className="bg-gradient-to-r from-amber-600 via-amber-700 to-yellow-700 text-white p-3.5 rounded-2xl shadow-md flex items-center justify-between">
+                  <button onClick={() => { setActiveTab('home'); setCurrentFolder('main'); }} className="p-1 rounded-full bg-white/20"><Icons.ChevronLeft /></button>
+                  <h2 className="font-black text-base font-tiro">॥ अमावस्या दर्शन सारणी ॥</h2>
+                  <Icons.Calendar />
+                </div>
+
+                <div className="space-y-3">
+                  {amavasyaList.map((item) => (
+                    <div key={item.id} className="bg-white rounded-3xl p-4 border border-amber-200 shadow-xs relative overflow-hidden">
+                      <div className="flex justify-between items-start mb-2 border-b border-amber-100 pb-2">
+                        <div>
+                          <h3 className="font-black text-base text-amber-950 font-tiro">{item.month} अमावस्या</h3>
+                          <p className="text-[11px] font-semibold text-amber-800/70 font-noto-sans">{item.subtext}</p>
+                        </div>
+                        <GuruAvatar imgUrl={guruAvatarUrl} size="lg" />
+                      </div>
+                      <div className="space-y-2 text-xs font-noto-sans">
+                        <p className="font-bold text-amber-950"><span className="pulse-dot mr-1.5"></span> प्रारम्भ: {item.start}</p>
+                        <p className="font-bold text-amber-950"><span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block mr-1.5"></span> समाप्त: {item.end}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {currentFolder === 'jap_mala' && (
+              <div className="space-y-4 text-center font-noto-sans animate-fadeIn">
+                <div className="bg-gradient-to-r from-amber-600 to-amber-700 text-white p-3.5 rounded-2xl shadow-md flex items-center justify-between">
+                  <button onClick={() => setCurrentFolder('main')} className="p-1 rounded-full bg-white/20"><Icons.ChevronLeft /></button>
+                  <h2 className="font-bold text-base font-tiro">॥ डिजिटल जाप माला ॥</h2>
+                  <Icons.Target />
+                </div>
+
+                <div className="flex justify-center space-x-2 text-xs font-tiro">
+                  {[27, 54, 108].map(goal => (
+                    <button key={goal} onClick={() => setTargetGoal(goal)} className={`px-4 py-1.5 rounded-full border ${targetGoal === goal ? 'bg-amber-600 text-white font-bold' : 'bg-white text-amber-900'}`}>
+                      {goal} मनके
+                    </button>
+                  ))}
+                </div>
+
+                <div className="w-32 h-32 bg-white border-4 border-amber-300 rounded-full mx-auto flex flex-col items-center justify-center shadow-lg relative">
+                  <span className="text-4xl font-black text-amber-600 font-tiro">{japCount}</span>
+                  <span className="text-[10px] text-amber-800 font-bold">लक्ष्य: {targetGoal}</span>
+                </div>
+
+                <span className="inline-block bg-amber-100 text-amber-900 font-bold text-xs px-4 py-1.5 rounded-full shadow-xs font-tiro border border-amber-200">
+                  माला पूर्ण: {malaCompleted} बार
+                </span>
+
+                <div className="flex justify-center py-2">
+                  <button 
+                    onClick={handleJapClick} 
+                    className="w-56 h-56 rounded-full bg-gradient-to-tr from-amber-600 via-amber-500 to-amber-700 p-2 shadow-2xl active:scale-95 transition-transform border-4 border-amber-200 flex flex-col items-center justify-center text-white"
+                  >
+                    <GuruAvatar imgUrl={guruAvatarUrl} size="lg" showAura={false} />
+                    <span className="text-xl font-black font-tiro mt-2">जाप करें (जपे)</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {currentFolder === 'choghadiya' && (
+              <div className="space-y-3 animate-fadeIn">
+                <div className="bg-gradient-to-r from-amber-600 to-amber-700 text-white p-3.5 rounded-2xl shadow-md flex items-center justify-between">
+                  <button onClick={() => setCurrentFolder('main')} className="p-1 rounded-full bg-white/20"><Icons.ChevronLeft /></button>
+                  <h2 className="font-bold text-base font-tiro">॥ चौघड़िया मुहूर्त ॥</h2>
+                  <Icons.Sun />
+                </div>
+
+                <div className="grid grid-cols-2 bg-amber-100/80 p-1 rounded-2xl text-xs font-bold text-amber-900 border border-amber-200 font-tiro">
+                  <button onClick={() => setChoghadiyaTab('day')} className={`py-2 rounded-xl transition ${choghadiyaTab === 'day' ? 'bg-amber-600 text-white shadow-xs' : ''}`}>☀️ दिन का चौघड़िया</button>
+                  <button onClick={() => setChoghadiyaTab('night')} className={`py-2 rounded-xl transition ${choghadiyaTab === 'night' ? 'bg-amber-900 text-white shadow-xs' : ''}`}>🌙 रात का चौघड़िया</button>
+                </div>
+
+                <div className="bg-white rounded-2xl p-4 border border-amber-200 shadow-xs divide-y divide-amber-100 text-xs">
+                  {(choghadiyaTab === 'day' ? CHOGHADIYA_DAY : CHOGHADIYA_NIGHT).map((row, idx) => {
+                    const isActive = currentHour >= row.startHour && currentHour < row.endHour;
+                    return (
+                      <div key={idx} className={`py-3 flex items-center justify-between ${isActive ? 'bg-amber-50 px-2 rounded-xl border border-amber-300' : ''}`}>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-amber-950 text-sm font-tiro">{row.name}</span>
+                            {isActive && <span className="bg-emerald-600 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-1"><span className="pulse-dot"></span> अभी चालू</span>}
+                          </div>
+                          <span className="text-[10px] text-amber-700/80 block font-noto-sans mt-0.5">{row.time}</span>
+                        </div>
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold font-tiro ${row.type === 'good' ? 'bg-green-100 text-green-800' : row.type === 'bad' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>
+                          {row.status}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {currentFolder === 'rules' && (
+              <div className="space-y-3 animate-fadeIn">
+                <div className="bg-gradient-to-r from-amber-600 to-amber-700 text-white p-3.5 rounded-2xl shadow-md flex items-center justify-between">
+                  <button onClick={() => setCurrentFolder('main')} className="p-1 rounded-full bg-white/20"><Icons.ChevronLeft /></button>
+                  <h2 className="font-bold text-base font-tiro">॥ २९ नियम ॥</h2>
+                  <Icons.List />
+                </div>
+
+                <div className="space-y-2">
+                  {rules.map((rule) => (
+                    <div key={rule.id} className="bg-white rounded-2xl p-3.5 border border-amber-100 shadow-xs flex items-start space-x-3">
+                      <span className="w-8 h-8 rounded-full bg-amber-100 text-amber-900 font-black text-xs flex items-center justify-center flex-shrink-0 border border-amber-200">
+                        {rule.id < 10 ? `0${rule.id}` : rule.id}
+                      </span>
+                      <div>
+                        <h4 className="font-bold text-xs text-amber-950 mb-0.5 font-tiro">{rule.title}</h4>
+                        <p className="text-[11px] text-amber-800/80 leading-relaxed font-noto-sans">{rule.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {currentFolder === 'aarti' && (
+              <div className="space-y-3 animate-fadeIn">
+                <div className="bg-gradient-to-r from-amber-600 to-amber-700 text-white p-3.5 rounded-2xl shadow-md flex items-center justify-between">
+                  <button onClick={() => setCurrentFolder('main')} className="p-1 rounded-full bg-white/20"><Icons.ChevronLeft /></button>
+                  <h2 className="font-bold text-base font-tiro">॥ आरती संग्रह ॥</h2>
+                  <Icons.Music />
+                </div>
+
+                <div className="space-y-2">
+                  {aartis.map((aarti) => (
+                    <div key={aarti.id} onClick={() => openFolder('aarti_reader', aarti)} className="bg-white rounded-2xl p-3.5 border border-amber-100 shadow-xs flex justify-between items-center cursor-pointer">
+                      <span className="font-bold text-xs text-amber-950 font-tiro">{aarti.title}</span>
+                      <Icons.ChevronRight />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {currentFolder === 'aarti_reader' && selectedItem && (
+              <div className="space-y-3 animate-fadeIn">
+                <div className="bg-white p-2.5 rounded-2xl border border-amber-200 shadow-xs flex items-center justify-between text-xs">
+                  <button onClick={() => setCurrentFolder('aarti')} className="p-1 text-amber-900"><Icons.ChevronLeft /></button>
+                  <span className="font-bold text-amber-900 font-tiro">{selectedItem.title}</span>
+                  <Icons.Music />
+                </div>
+
+                <div className="bg-white rounded-3xl p-5 border border-amber-200 shadow-md text-center leading-relaxed text-amber-950 font-noto-serif text-base">
+                  {selectedItem.lyrics}
+                </div>
+              </div>
+            )}
+
+            {currentFolder === 'bhajan' && (
+              <div className="space-y-3 animate-fadeIn">
+                <div className="bg-gradient-to-r from-amber-600 to-amber-700 text-white p-3.5 rounded-2xl shadow-md flex items-center justify-between">
+                  <button onClick={() => setCurrentFolder('main')} className="p-1 rounded-full bg-white/20"><Icons.ChevronLeft /></button>
+                  <h2 className="font-bold text-base font-tiro">॥ भजन संग्रह ॥</h2>
+                  <Icons.Music />
+                </div>
+
+                {playingBhajanId && (
+                  <div className="bg-amber-900 text-white rounded-2xl p-3 text-center space-y-1">
+                    <span className="text-xs font-bold font-tiro">🎵 भजन ऑडियो बज रहा है...</span>
+                    <canvas ref={canvasRef} width={300} height={30} className="w-full h-8 mx-auto"></canvas>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  {bhajans.map((bhajan) => {
+                    const isPlaying = playingBhajanId === bhajan.id;
+                    return (
+                      <div key={bhajan.id} className="bg-white rounded-2xl p-3.5 border border-amber-100 shadow-xs flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <button onClick={() => setPlayingBhajanId(isPlaying ? null : bhajan.id)} className={`w-10 h-10 rounded-2xl text-white flex items-center justify-center shadow-xs ${isPlaying ? 'bg-amber-700' : 'bg-amber-500'}`}>
+                            {isPlaying ? <Icons.Pause /> : <Icons.Play />}
+                          </button>
+                          <div>
+                            <h4 className="font-bold text-xs text-amber-950 font-tiro">{bhajan.title}</h4>
+                            <p className="text-[10px] text-amber-700/70 font-noto-sans">{bhajan.singer} • {bhajan.duration}</p>
+                          </div>
+                        </div>
+                        <button onClick={() => setPlayingBhajanId(isPlaying ? null : bhajan.id)} className={`px-3 py-1 rounded-full text-xs font-bold font-tiro ${isPlaying ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-900'}`}>
+                          {isPlaying ? 'रोकें' : 'सुनें'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {currentFolder === 'sakhi' && (
+              <div className="space-y-3 animate-fadeIn">
+                <div className="bg-gradient-to-r from-amber-600 to-amber-700 text-white p-3.5 rounded-2xl shadow-md flex items-center justify-between">
+                  <button onClick={() => setCurrentFolder('main')} className="p-1 rounded-full bg-white/20"><Icons.ChevronLeft /></button>
+                  <h2 className="font-bold text-base font-tiro">॥ साखी संग्रह ॥</h2>
+                  <Icons.Book />
+                </div>
+
+                <div className="space-y-2">
+                  {sakhis.map((sakhi) => (
+                    <div key={sakhi.id} onClick={() => openFolder('sakhi_reader', sakhi)} className="bg-white rounded-2xl p-3.5 border border-amber-100 shadow-xs flex items-center justify-between cursor-pointer">
+                      <span className="font-bold text-xs text-amber-950 font-tiro">{sakhi.title}</span>
+                      <Icons.ChevronRight />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {currentFolder === 'sakhi_reader' && selectedItem && (
+              <div className="space-y-3 animate-fadeIn">
+                <div className="bg-white p-2.5 rounded-2xl border border-amber-200 shadow-xs flex items-center justify-between text-xs">
+                  <button onClick={() => setCurrentFolder('sakhi')} className="p-1 text-amber-900"><Icons.ChevronLeft /></button>
+                  <span className="font-bold text-amber-900 font-tiro">{selectedItem.title}</span>
+                  <Icons.Book />
+                </div>
+
+                {selectedItem.audioUrl && (
+                  <audio
+                    key={selectedItem.id}
+                    controls
+                    preload="none"
+                    className="w-full h-10 rounded-full"
+                    src={resolveAssetUrl(selectedItem.audioUrl, githubUser, githubRepo, githubBranch)}
+                  >
+                    आपका ब्राउज़र ऑडियो सपोर्ट नहीं करता।
+                  </audio>
+                )}
+
+                <div className="bg-white rounded-3xl p-5 border border-amber-200 shadow-md text-center leading-relaxed text-amber-950 font-noto-serif text-base">
+                  {selectedItem.verses?.map((v, i) => <p key={i} className="py-1">{v}</p>)}
+                </div>
+              </div>
+            )}
+
+            {currentFolder === 'guru_mantra' && (
+              <div className="space-y-3 animate-fadeIn">
+                <div className="bg-gradient-to-r from-amber-600 to-amber-700 text-white p-3.5 rounded-2xl shadow-md flex items-center justify-between">
+                  <button onClick={() => setCurrentFolder('main')} className="p-1 rounded-full bg-white/20"><Icons.ChevronLeft /></button>
+                  <h2 className="font-bold text-base font-tiro">॥ गुरु मंत्र ॥</h2>
+                  <Icons.Music />
+                </div>
+
+                <div className="space-y-3 font-noto-sans">
+                  {guruMantras.map((m) => (
+                    <div key={m.id} className="bg-white rounded-2xl p-4 border border-amber-200 shadow-xs flex items-center gap-3">
+                      {m.playable && (
+                        <button onClick={() => playDevotionalSound('shankh')} className="w-9 h-9 flex-shrink-0 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-700">
+                          <Icons.Play />
+                        </button>
+                      )}
+                      <div className="space-y-1">
+                        <h3 className="font-bold text-sm text-amber-950 font-tiro">{m.title}</h3>
+                        <p className="text-xs text-amber-800/80 leading-relaxed">{m.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {currentFolder === 'bichhuda' && (
+              <div className="space-y-3 animate-fadeIn">
+                <div className="bg-gradient-to-r from-amber-600 to-amber-700 text-white p-3.5 rounded-2xl shadow-md flex items-center justify-between">
+                  <button onClick={() => setCurrentFolder('main')} className="p-1 rounded-full bg-white/20"><Icons.ChevronLeft /></button>
+                  <h2 className="font-bold text-base font-tiro">॥ बिछुड़ा (विंदर) ॥</h2>
+                  <Icons.Book />
+                </div>
+
+                <div className="bg-white rounded-3xl p-4 border border-amber-200 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="font-bold text-sm text-amber-950 font-tiro">बिछुड़ा तिथियां</h3>
+                    <div className="flex gap-2">
+                      <select
+                        value={bichhudaSel}
+                        onChange={(e) => setBichhudaSel(parseInt(e.target.value))}
+                        className="bg-amber-50 border border-amber-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-amber-900 font-tiro"
+                      >
+                        {bichhudaData.map((b, idx) => (
+                          <option key={b.id} value={idx}>{b.month}</option>
+                        ))}
+                      </select>
+                      <span className="bg-amber-50 border border-amber-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-amber-900">
+                        {bichhudaData[bichhudaSel]?.year}
+                      </span>
+                    </div>
+                  </div>
+
+                  {bichhudaData[bichhudaSel] && (
+                    <div className="bg-[#FCFAF5] rounded-2xl p-4 border border-amber-200 relative">
+                      {bichhudaData[bichhudaSel].upcoming && (
+                        <span className="absolute top-0 right-0 bg-amber-500 text-white font-bold text-[9px] px-3 py-1 rounded-bl-2xl rounded-tr-2xl font-tiro">आगामी</span>
+                      )}
+                      <h4 className="font-black text-lg text-amber-800 font-tiro mb-2">{bichhudaData[bichhudaSel].month} {bichhudaData[bichhudaSel].year}</h4>
+                      <div className="text-xs space-y-1.5 font-noto-sans">
+                        <p><span className="font-bold text-amber-900">प्रारंभ:</span> {bichhudaData[bichhudaSel].start}</p>
+                        <p><span className="font-bold text-amber-900">समाप्तः</span> {bichhudaData[bichhudaSel].end}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-red-50 rounded-2xl p-4 border border-red-200 space-y-2 text-xs">
+                  <h3 className="font-bold text-red-900 font-tiro">वर्जित कार्य</h3>
+                  <ul className="text-red-800 space-y-1 list-disc pl-4 font-noto-sans">
+                    {bichhudaForbidden.map((item, idx) => <li key={idx}>{item}</li>)}
+                  </ul>
+                </div>
+
+                <p className="text-[11px] text-amber-800/70 italic text-center leading-relaxed px-1 font-noto-sans">
+                  {bichhudaNote}
+                </p>
+              </div>
+            )}
+
+            {currentFolder === 'melas' && (
+              <div className="space-y-3.5 animate-fadeIn">
+                <div className="bg-gradient-to-r from-amber-600 to-amber-700 text-white p-3.5 rounded-2xl shadow-md flex items-center justify-between">
+                  <button onClick={() => setCurrentFolder('main')} className="p-1 rounded-full bg-white/20"><Icons.ChevronLeft /></button>
+                  <h2 className="font-bold text-base font-tiro">॥ आगामी प्रमुख मेले ॥</h2>
+                  <Icons.Users />
+                </div>
+
+                <div className="space-y-3 font-noto-sans">
+                  {melas.map((mela, idx) => (
+                    <div key={idx} className="bg-white rounded-3xl p-4 border border-amber-200 shadow-sm space-y-2 relative overflow-hidden">
+                      {mela.badge && <span className="absolute top-0 right-0 bg-amber-500 text-white font-bold text-[9px] px-3 py-1 rounded-bl-2xl font-tiro">{mela.badge}</span>}
+                      <h3 className="font-black text-sm text-amber-950 pr-12 font-tiro">{mela.title}</h3>
+                      <p className="text-xs font-bold text-amber-900 flex items-center gap-1.5"><Icons.Calendar /> {mela.date}</p>
+                      <p className="text-xs text-amber-800/80 leading-relaxed font-medium">📍 {mela.location}</p>
+                      <div className="bg-amber-50/60 p-2.5 rounded-xl text-xs text-amber-900 font-medium border border-amber-100">{mela.desc}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'about' && (
+              <div className="space-y-3.5 animate-fadeIn">
+                <div className="bg-gradient-to-r from-amber-600 via-amber-700 to-yellow-700 text-white p-3.5 rounded-2xl shadow-md flex items-center justify-between">
+                  <button onClick={() => { setActiveTab('home'); setCurrentFolder('main'); }} className="p-1 rounded-full bg-white/20"><Icons.ChevronLeft /></button>
+                  <h2 className="font-black text-base font-tiro">॥ हमारे बारे में ॥</h2>
+                  <Icons.Info />
+                </div>
+
+                <div className="flex justify-center py-2">
+                  <GuruAvatar imgUrl={guruAvatarUrl} size="xl" showAura={true} />
+                </div>
+
+                <div className="bg-white rounded-3xl p-5 border border-amber-200 shadow-md space-y-4 text-xs leading-relaxed font-noto-sans">
+                  <p className="font-black text-sm text-amber-950 font-tiro text-center">
+                    {aboutText.heading}
+                  </p>
+                  <div>
+                    <p className="font-black text-amber-950 mb-1">{aboutText.disclaimerTitle}</p>
+                    <p className="text-amber-900/90 font-medium">
+                      {aboutText.disclaimerBody}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'privacy' && (
+              <div className="space-y-3.5 animate-fadeIn">
+                <div className="bg-gradient-to-r from-amber-600 via-amber-700 to-yellow-700 text-white p-3.5 rounded-2xl shadow-md flex items-center justify-between">
+                  <button onClick={() => { setActiveTab('home'); setCurrentFolder('main'); }} className="p-1 rounded-full bg-white/20"><Icons.ChevronLeft /></button>
+                  <h2 className="font-black text-base font-tiro">॥ गोपनीयता नीति ॥</h2>
+                  <Icons.Shield />
+                </div>
+
+                <div className="bg-white rounded-3xl p-5 border border-amber-200 shadow-md space-y-3 text-xs leading-relaxed font-noto-sans">
+                  <h3 className="font-bold text-sm text-amber-950 font-tiro">गोपनीयता और डेटा सुरक्षा</h3>
+                  <p>यह ऐप आपकी व्यक्तिगत जानकारी एकत्र नहीं करता है। जाप माला गिनती और आपकी पसंद का डेटा आपके फ़ोन में ही सुरक्षित रहता है।</p>
+                </div>
+              </div>
+            )}
+
+          </main>
+
+          {/* BOTTOM NAVIGATION */}
+          <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-[#FCFAF5]/95 backdrop-blur-md border-t border-amber-200/80 px-2 py-1 flex items-center justify-around z-40 font-tiro text-[10px]">
+            {[
+              { id: 'home', label: 'होम', icon: Icons.Home },
+              { id: 'support', label: 'सहयोग', icon: Icons.HandHeart },
+              { id: 'amavasya', label: 'अमावस्या', icon: Icons.Calendar },
+              { id: 'about', label: 'हमारे बारे में', icon: Icons.Info },
+              { id: 'privacy', label: 'गोपनीयता', icon: Icons.Shield },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => { setActiveTab(tab.id); setCurrentFolder('main'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                className={`flex flex-col items-center py-1 px-2 transition ${activeTab === tab.id && currentFolder === 'main' ? 'text-amber-700 font-extrabold scale-105' : 'text-amber-900/60'}`}
+              >
+                <tab.icon />
+                <span className="mt-0.5">{tab.label}</span>
+              </button>
+            ))}
+          </nav>
+
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+
+  <!-- PWA offline support. sw.js caches the app shell + CDN libs + data + audio so the
+       app opens instantly and works with no internet after the first visit. -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch((err) => console.log('SW register failed (non-fatal):', err));
+      });
+    }
+  </script>
+</body>
+</html>
